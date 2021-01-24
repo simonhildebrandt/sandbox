@@ -7,9 +7,9 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "serve": "live-server --port=9000 public/",
-    "build": "browserify src/index.js -o public/index.js -t [ babelify ]",
-    "watch": "watchify src/index.js -o public/index.js -t [ babelify ]"
+    "serve": "live-server --port=9000",
+    "build": "browserify src/index.js -o index.js -t [ babelify ]",
+    "watch": "watchify src/index.js -o index.js -t [ babelify ]"
   },
   "dependencies": {
     "@babel/core": "^7.12.10",

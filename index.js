@@ -32230,6 +32230,7 @@ function App() {
       setRoute = _useState2[1];
 
   function navigate(route) {
+    if (route.startsWith("http")) return window.location = route;
     router.navigate(route);
   }
 
@@ -32266,7 +32267,7 @@ function App() {
     }
   }, "Spiral"), " ", /*#__PURE__*/_react["default"].createElement(Link, {
     onClick: function onClick() {
-      return navigate("http://stuff.com");
+      return navigate("https://github.com/simonhildebrandt/sandbox/blob/master/src/spiral.js");
     }
   }, "(Code)")), view());
 }
@@ -32468,6 +32469,7 @@ var Spiral = function Spiral() {
       top = centreY + up;
     } else {
       // turning
+      // https://mathworld.wolfram.com/LogarithmicSpiral.html
       angle = up / -300;
       var r = Math.exp(up / (radius * 8)) * radius;
       scale = Math.exp(up / (radius * 8));

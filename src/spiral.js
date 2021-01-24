@@ -112,6 +112,7 @@ const Spiral = () => {
       top = centreY + up;
     } else {
       // turning
+      // https://mathworld.wolfram.com/LogarithmicSpiral.html
       angle = up / - 300;
       const r = Math.exp(up / (radius * 8)) * radius;
       scale = Math.exp(up / (radius * 8));

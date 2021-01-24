@@ -45,6 +45,7 @@ function App () {
   const [route, setRoute] = useState("default");
 
   function navigate (route) {
+    if (route.startsWith("http")) return window.location = route;
     router.navigate(route);
   }
 
@@ -73,7 +74,7 @@ function App () {
   return <Container>
     <Floating>
       <Link onClick={() => navigate("/")}>Main</Link> | <Link onClick={() => navigate("/spiral")}>
-      Spiral</Link> <Link onClick={() => navigate("http://stuff.com")}>(Code)</Link> 
+      Spiral</Link> <Link onClick={() => navigate("https://github.com/simonhildebrandt/sandbox/blob/master/src/spiral.js")}>(Code)</Link> 
     </Floating>
     { view() }
   </Container>;
