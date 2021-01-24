@@ -27,6 +27,13 @@ const BlockView = styled.div`
   transform: translate(-50%, -50%);
 `
 
+const Hint = styled.div`
+  color: blue;
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+`
+
 const lorem = new LoremIpsum({
   sentencesPerParagraph: { max: 6, min: 4 },
   wordsPerSentence: { max: 8, min: 4 }
@@ -80,6 +87,7 @@ const Spiral = () => {
   }
 
   function calculateTop(i) {
+    // Super inefficient - should precalculate and store
     if (i == 0) return offset;
 
     const box = sizes[i];
@@ -114,6 +122,7 @@ const Spiral = () => {
   }
 
   return <Container ref={containerRef}>
+    <Hint>(Scroll the text up)</Hint>
     { shape && ipsum.map((p, i) => <Block 
           key={i} 
           transform={buildTransform(i)} 

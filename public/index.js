@@ -32317,6 +32317,16 @@ function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToAr
 
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
+function _templateObject4() {
+  var data = _taggedTemplateLiteral(["\n  color: blue;\n  position: absolute;\n  left: 20px;\n  bottom: 20px;\n"]);
+
+  _templateObject4 = function _templateObject4() {
+    return data;
+  };
+
+  return data;
+}
+
 function _templateObject3() {
   var data = _taggedTemplateLiteral(["\n  font-size: 10pt;\n  width: 200px;\n  padding: 10px 0;\n  transform: translate(-50%, -50%);\n"]);
 
@@ -32354,6 +32364,8 @@ var Container = _styledComponents["default"].div(_templateObject());
 var BlockContainer = _styledComponents["default"].div(_templateObject2());
 
 var BlockView = _styledComponents["default"].div(_templateObject3());
+
+var Hint = _styledComponents["default"].div(_templateObject4());
 
 var lorem = new _loremIpsum.LoremIpsum({
   sentencesPerParagraph: {
@@ -32433,6 +32445,7 @@ var Spiral = function Spiral() {
   }
 
   function calculateTop(i) {
+    // Super inefficient - should precalculate and store
     if (i == 0) return offset;
     var box = sizes[i];
     var boxAbove = sizes[i - 1];
@@ -32467,7 +32480,7 @@ var Spiral = function Spiral() {
 
   return /*#__PURE__*/_react["default"].createElement(Container, {
     ref: containerRef
-  }, shape && ipsum.map(function (p, i) {
+  }, /*#__PURE__*/_react["default"].createElement(Hint, null, "(Scroll the text up)"), shape && ipsum.map(function (p, i) {
     return /*#__PURE__*/_react["default"].createElement(Block, {
       key: i,
       transform: buildTransform(i),
