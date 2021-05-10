@@ -6,6 +6,7 @@ import Navigo from 'navigo';
 import styled from 'styled-components';
 
 import Spiral from './spiral';
+import Isometric from './isometric';
 
 
 const Floating = styled.div`
@@ -32,19 +33,19 @@ const Container = styled.div`
 const router = new Navigo('/', { hash: true });
 
 
-function Explain () {
+function Explain() {
   return <Page>
     <p>
-      A growing collection of web experiments 
+      A growing collection of web experiments
       by <a href="http://simonhildebrandt.com">Simon Hildebrandt</a>.
     </p>
   </Page>
 }
 
-function App () {
+function App() {
   const [route, setRoute] = useState("default");
 
-  function navigate (route) {
+  function navigate(route) {
     if (route.startsWith("http")) return window.location = route;
     router.navigate(route);
   }
@@ -54,30 +55,32 @@ function App () {
       '/': () => {
         setRoute("default");
       },
-      '/:key': ({ data: {key} }) => {
+      '/:key': ({ data: { key } }) => {
         setRoute(key);
       }
     })
-    .resolve();
+      .resolve();
   }, []);
 
   function view() {
-    switch(route) {
+    switch (route) {
       case "spiral":
-        return <Spiral/>
+        return <Spiral />
+      case "isometric":
+        return <Isometric />
       case "default":
-      default:  
-        return <Explain/>
+      default:
+        return <Explain />
     }
   }
 
   return <Container>
     <Floating>
       <Link onClick={() => navigate("/")}>Main</Link> | <Link onClick={() => navigate("/spiral")}>
-      Spiral</Link> <Link onClick={() => navigate("https://github.com/simonhildebrandt/sandbox/blob/master/src/spiral.js")}>(Code)</Link> 
+        Spiral</Link> <Link onClick={() => navigate("https://github.com/simonhildebrandt/sandbox/blob/master/src/spiral.js")}>(Code)</Link> | <Link onClick={() => navigate("/isometric")}>Isometric</Link> <Link onClick={() => navigate("https://github.com/simonhildebrandt/sandbox/blob/master/src/isometric.js")}>(Code)</Link>
     </Floating>
-    { view() }
+    {view()}
   </Container>;
 }
 
-ReactDOM.render(<App/>, document.getElementById('app'));
+ReactDOM.render(<App />, document.getElementById('app'));

@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import ReactDOM from 'react-dom';
 
 import styled from 'styled-components';
 
@@ -41,7 +40,7 @@ const lorem = new LoremIpsum({
 const ipsum = [...new Array(100)].map(() => lorem.generateParagraphs(1));
 
 
-const Block = ({content, transform, reportSize}) => {
+const Block = ({ content, transform, reportSize }) => {
   const domRef = useRef(null);
 
   useEffect(() => {
@@ -50,7 +49,7 @@ const Block = ({content, transform, reportSize}) => {
     }
   }, []);
 
-  return <BlockContainer style={{transform}}>
+  return <BlockContainer style={{ transform }}>
     <BlockView ref={domRef}>{content}</BlockView>
   </BlockContainer>
 }
@@ -91,7 +90,7 @@ const Spiral = () => {
     if (i == 0) return offset;
 
     const box = sizes[i];
-    const boxAbove = sizes[i-1];
+    const boxAbove = sizes[i - 1];
     if (!box || !boxAbove) return 0;
 
     return (box.height / 2) + (boxAbove.height / 2) + calculateTop(i - 1);
@@ -101,7 +100,7 @@ const Spiral = () => {
     const { centreX, centreY, radius } = shape;
 
     const up = calculateTop(i);
-    
+
     let left, top;
     let angle = 0;
     let scale = 1;
@@ -124,12 +123,12 @@ const Spiral = () => {
 
   return <Container ref={containerRef}>
     <Hint>(Scroll the text up)</Hint>
-    { shape && ipsum.map((p, i) => <Block 
-          key={i} 
-          transform={buildTransform(i)} 
-          content={p} 
-          reportSize={size => trackSizes(i, size)} 
-        /> )}
+    {shape && ipsum.map((p, i) => <Block
+      key={i}
+      transform={buildTransform(i)}
+      content={p}
+      reportSize={size => trackSizes(i, size)}
+    />)}
   </Container>;
 };
 
