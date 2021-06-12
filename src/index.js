@@ -7,6 +7,7 @@ import styled from 'styled-components';
 
 import Spiral from './spiral';
 import Isometric from './isometric';
+import Tetris from './tetris';
 
 
 const Floating = styled.div`
@@ -17,6 +18,10 @@ const Link = styled.div`
   display: inline-block;
   color: blue;
   cursor: pointer;
+`
+
+const Tab = styled.span`
+  margin-right: 2em;
 `
 
 const Page = styled.div`
@@ -32,6 +37,14 @@ const Container = styled.div`
 
 const router = new Navigo('/', { hash: true });
 
+const srcPath = 'https://github.com/simonhildebrandt/sandbox/blob/master/src/'
+
+const pages = [
+  ['/', 'Main', null],
+  ['/spiral', 'Spiral', 'spiral.js'],
+  ['/isometric', 'Isometric', 'isometric.js'],
+  ['/tetris', 'Tetris', 'tetris.js'],
+];
 
 function Explain() {
   return <Page>
@@ -68,6 +81,8 @@ function App() {
         return <Spiral />
       case "isometric":
         return <Isometric />
+      case "tetris":
+        return <Tetris />
       case "default":
       default:
         return <Explain />
@@ -76,8 +91,11 @@ function App() {
 
   return <Container>
     <Floating>
-      <Link onClick={() => navigate("/")}>Main</Link> | <Link onClick={() => navigate("/spiral")}>
-        Spiral</Link> <Link onClick={() => navigate("https://github.com/simonhildebrandt/sandbox/blob/master/src/spiral.js")}>(Code)</Link> | <Link onClick={() => navigate("/isometric")}>Isometric</Link> <Link onClick={() => navigate("https://github.com/simonhildebrandt/sandbox/blob/master/src/isometric.js")}>(Code)</Link>
+      { pages.map(([link, name, source]) => (
+        <Tab key={link}>
+          <Link onClick={() => navigate(link)}>{name}</Link> { source && <Link onClick={() => navigate(srcPath + source)}>(Code)</Link> }
+        </Tab>
+      )) }
     </Floating>
     {view()}
   </Container>;

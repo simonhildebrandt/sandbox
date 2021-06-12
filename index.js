@@ -33285,6 +33285,8 @@ var _spiral = _interopRequireDefault(require("./spiral"));
 
 var _isometric = _interopRequireDefault(require("./isometric"));
 
+var _tetris = _interopRequireDefault(require("./tetris"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
 function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function _getRequireWildcardCache() { return cache; }; return cache; }
@@ -33303,8 +33305,18 @@ function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
-function _templateObject4() {
+function _templateObject5() {
   var data = _taggedTemplateLiteral(["\n  height: 100%;\n  display: flex;\n  flex-direction: column;\n"]);
+
+  _templateObject5 = function _templateObject5() {
+    return data;
+  };
+
+  return data;
+}
+
+function _templateObject4() {
+  var data = _taggedTemplateLiteral(["\n  padding: 1em;\n  font-size: 20pt;\n  font-family: 'Merriweather', serif;"]);
 
   _templateObject4 = function _templateObject4() {
     return data;
@@ -33314,7 +33326,7 @@ function _templateObject4() {
 }
 
 function _templateObject3() {
-  var data = _taggedTemplateLiteral(["\n  padding: 1em;\n  font-size: 20pt;\n  font-family: 'Merriweather', serif;"]);
+  var data = _taggedTemplateLiteral(["\n  margin-right: 2em;\n"]);
 
   _templateObject3 = function _templateObject3() {
     return data;
@@ -33349,13 +33361,17 @@ var Floating = _styledComponents["default"].div(_templateObject());
 
 var Link = _styledComponents["default"].div(_templateObject2());
 
-var Page = _styledComponents["default"].div(_templateObject3());
+var Tab = _styledComponents["default"].span(_templateObject3());
 
-var Container = _styledComponents["default"].div(_templateObject4());
+var Page = _styledComponents["default"].div(_templateObject4());
+
+var Container = _styledComponents["default"].div(_templateObject5());
 
 var router = new _navigo["default"]('/', {
   hash: true
 });
+var srcPath = 'https://github.com/simonhildebrandt/sandbox/blob/master/src/';
+var pages = [['/', 'Main', null], ['/spiral', 'Spiral', 'spiral.js'], ['/isometric', 'Isometric', 'isometric.js'], ['/tetris', 'Tetris', 'tetris.js']];
 
 function Explain() {
   return /*#__PURE__*/_react["default"].createElement(Page, null, /*#__PURE__*/_react["default"].createElement("p", null, "A growing collection of web experiments by ", /*#__PURE__*/_react["default"].createElement("a", {
@@ -33394,38 +33410,38 @@ function App() {
       case "isometric":
         return /*#__PURE__*/_react["default"].createElement(_isometric["default"], null);
 
+      case "tetris":
+        return /*#__PURE__*/_react["default"].createElement(_tetris["default"], null);
+
       case "default":
       default:
         return /*#__PURE__*/_react["default"].createElement(Explain, null);
     }
   }
 
-  return /*#__PURE__*/_react["default"].createElement(Container, null, /*#__PURE__*/_react["default"].createElement(Floating, null, /*#__PURE__*/_react["default"].createElement(Link, {
-    onClick: function onClick() {
-      return navigate("/");
-    }
-  }, "Main"), " | ", /*#__PURE__*/_react["default"].createElement(Link, {
-    onClick: function onClick() {
-      return navigate("/spiral");
-    }
-  }, "Spiral"), " ", /*#__PURE__*/_react["default"].createElement(Link, {
-    onClick: function onClick() {
-      return navigate("https://github.com/simonhildebrandt/sandbox/blob/master/src/spiral.js");
-    }
-  }, "(Code)"), " | ", /*#__PURE__*/_react["default"].createElement(Link, {
-    onClick: function onClick() {
-      return navigate("/isometric");
-    }
-  }, "Isometric"), " ", /*#__PURE__*/_react["default"].createElement(Link, {
-    onClick: function onClick() {
-      return navigate("https://github.com/simonhildebrandt/sandbox/blob/master/src/isometric.js");
-    }
-  }, "(Code)")), view());
+  return /*#__PURE__*/_react["default"].createElement(Container, null, /*#__PURE__*/_react["default"].createElement(Floating, null, pages.map(function (_ref2) {
+    var _ref3 = _slicedToArray(_ref2, 3),
+        link = _ref3[0],
+        name = _ref3[1],
+        source = _ref3[2];
+
+    return /*#__PURE__*/_react["default"].createElement(Tab, {
+      key: link
+    }, /*#__PURE__*/_react["default"].createElement(Link, {
+      onClick: function onClick() {
+        return navigate(link);
+      }
+    }, name), " ", source && /*#__PURE__*/_react["default"].createElement(Link, {
+      onClick: function onClick() {
+        return navigate(srcPath + source);
+      }
+    }, "(Code)"));
+  })), view());
 }
 
 _reactDom["default"].render( /*#__PURE__*/_react["default"].createElement(App, null), document.getElementById('app'));
 
-},{"./isometric":47,"./spiral":48,"navigo":24,"react":36,"react-dom":30,"styled-components":45}],47:[function(require,module,exports){
+},{"./isometric":47,"./spiral":48,"./tetris":49,"navigo":24,"react":36,"react-dom":30,"styled-components":45}],47:[function(require,module,exports){
 "use strict";
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
@@ -33843,4 +33859,213 @@ var Spiral = function Spiral() {
 var _default = Spiral;
 exports["default"] = _default;
 
-},{"lorem-ipsum":14,"react":36,"styled-components":45}]},{},[46]);
+},{"lorem-ipsum":14,"react":36,"styled-components":45}],49:[function(require,module,exports){
+"use strict";
+
+function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports["default"] = void 0;
+
+var _react = _interopRequireWildcard(require("react"));
+
+var _styledComponents = _interopRequireDefault(require("styled-components"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+
+function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return null; var cache = new WeakMap(); _getRequireWildcardCache = function _getRequireWildcardCache() { return cache; }; return cache; }
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || _typeof(obj) !== "object" && typeof obj !== "function") { return { "default": obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj["default"] = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
+
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return; var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+function _templateObject() {
+  var data = _taggedTemplateLiteral(["\n\n"]);
+
+  _templateObject = function _templateObject() {
+    return data;
+  };
+
+  return data;
+}
+
+function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
+
+var Container = _styledComponents["default"].div(_templateObject());
+
+var colours = ["#ac92eb", "#4fc1e8", "#a0d568", "#ffce54", "#ed5564"];
+var tiles = {
+  square: {
+    colour: colours[0],
+    layouts: [[[0, 0], [1, 0], [1, 1], [0, 1]], [[0, 0], [0, 1], [-1, 1], [-1, 0]], [[0, 0], [-1, 0], [-1, -1], [0, -1]], [[0, 0], [0, -1], [1, -1], [1, 0]]]
+  },
+  line: {
+    colour: colours[1],
+    layouts: [[[0, -1], [0, 0], [0, 1], [0, 2]], [[-1, 0], [0, 0], [1, 0], [2, 0]], [[1, -1], [1, 0], [1, 1], [1, 2]], [[-1, 1], [0, 1], [1, 1], [2, 1]]]
+  },
+  right: {
+    colour: colours[2],
+    layouts: [[[-1, -1], [-1, 0], [0, 0], [1, 0]], [[1, -1], [0, -1], [0, 0], [0, 1]], [[1, 1], [1, 0], [0, 0], [-1, 0]], [[-1, 1], [0, 1], [0, 0], [0, -1]]]
+  },
+  left: {
+    colour: colours[3],
+    layouts: [[[1, -1], [-1, 0], [0, 0], [1, 0]], [[1, 1], [0, -1], [0, 0], [0, 1]], [[-1, 1], [1, 0], [0, 0], [-1, 0]], [[-1, -1], [0, 1], [0, 0], [0, -1]]]
+  },
+  tee: {
+    colour: colours[4],
+    layouts: [[[-1, 0], [0, 0], [1, 0], [0, -1]], [[0, -1], [0, 0], [0, 1], [1, 0]], [[1, 0], [0, 0], [-1, 0], [0, 1]], [[0, -1], [0, 0], [0, 1], [-1, 0]]]
+  }
+};
+
+var translate = function translate(_ref, _ref2) {
+  var _ref3 = _slicedToArray(_ref, 2),
+      x1 = _ref3[0],
+      y1 = _ref3[1];
+
+  var _ref4 = _slicedToArray(_ref2, 2),
+      x2 = _ref4[0],
+      y2 = _ref4[1];
+
+  return [x1 + x2, y1 + y2];
+};
+
+var randomItem = function randomItem(items) {
+  return items[Math.floor(Math.random() * items.length)];
+};
+
+function build(active) {
+  var type = active.type,
+      position = active.position,
+      rotation = active.rotation;
+  var _tiles$type = tiles[type],
+      colour = _tiles$type.colour,
+      layouts = _tiles$type.layouts;
+  var layout = layouts[rotation];
+  return layout.map(function (t) {
+    return [translate(position, t), {
+      colour: colour
+    }];
+  });
+}
+
+var blocks = new Map();
+var SCALE = 10;
+
+function transform(_ref5) {
+  var _ref6 = _slicedToArray(_ref5, 2),
+      x = _ref6[0],
+      y = _ref6[1];
+
+  return "translate(".concat(x * SCALE, ", ").concat(y * SCALE, ")");
+}
+
+function Block(_ref7) {
+  var coords = _ref7.coords,
+      block = _ref7.block;
+  var colour = block.colour;
+  return /*#__PURE__*/_react["default"].createElement("g", {
+    transform: transform(coords)
+  }, /*#__PURE__*/_react["default"].createElement("rect", {
+    fill: colour,
+    width: "10",
+    height: "10"
+  }), /*#__PURE__*/_react["default"].createElement("rect", {
+    x: "2",
+    y: "2",
+    opacity: "0.5",
+    fill: "#ffffff",
+    width: "6",
+    height: "6"
+  }));
+}
+
+function Tetris() {
+  var _useState = (0, _react.useState)(function () {
+    return new Map([[[0, 0], {
+      colour: colours[2]
+    }]]);
+  }),
+      _useState2 = _slicedToArray(_useState, 2),
+      blocks = _useState2[0],
+      setBlocks = _useState2[1];
+
+  var _useState3 = (0, _react.useState)(randomItem(Object.keys(tiles))),
+      _useState4 = _slicedToArray(_useState3, 2),
+      type = _useState4[0],
+      setType = _useState4[1];
+
+  var _useState5 = (0, _react.useState)([2, 2]),
+      _useState6 = _slicedToArray(_useState5, 2),
+      position = _useState6[0],
+      setPosition = _useState6[1];
+
+  var _useState7 = (0, _react.useState)(0),
+      _useState8 = _slicedToArray(_useState7, 2),
+      rotation = _useState8[0],
+      setRotation = _useState8[1];
+
+  var active = {
+    type: type,
+    position: position,
+    rotation: rotation
+  };
+  var display = new Map([].concat(_toConsumableArray(blocks), _toConsumableArray(build(active))));
+
+  function mutate(e) {
+    e.preventDefault();
+
+    if (e.button == 0) {
+      var types = Object.keys(tiles);
+      setType(function (t) {
+        return types[(types.indexOf(t) + 1) % types.length];
+      });
+    } else {
+      setRotation(function (r) {
+        return (r + 1) % 4;
+      });
+    }
+  }
+
+  return /*#__PURE__*/_react["default"].createElement("svg", {
+    width: "100%",
+    height: "100%",
+    viewBox: "0 0 100 200",
+    onClick: mutate,
+    onContextMenu: mutate
+  }, Array.from(display).map(function (_ref8, i) {
+    var _ref9 = _slicedToArray(_ref8, 2),
+        coords = _ref9[0],
+        block = _ref9[1];
+
+    return /*#__PURE__*/_react["default"].createElement(Block, {
+      key: i,
+      coords: coords,
+      block: block
+    });
+  }));
+}
+
+var _default = Tetris;
+exports["default"] = _default;
+
+},{"react":36,"styled-components":45}]},{},[46]);
