@@ -3,7 +3,19 @@ import styled from 'styled-components';
 
 
 const Container = styled.div`
-
+  display: flex;
+  flex: 0 1 auto;
+  overflow: hidden;
+  flex-direction: column;
+`
+const Controls = styled.div`
+  font-family: sans-serif;
+  text-align: center;
+  cursor: pointer;
+`
+const Display = styled.div`
+  flex: 0 1 auto;
+  overflow: hidden;
 `
 
 const colours = ["#ac92eb", "#4fc1e8", "#a0d568", "#ffce54", "#ed5564"];
@@ -103,19 +115,37 @@ function Tetris() {
 
   function mutate(e) {
     e.preventDefault();
-    if (e.button == 0) {
-      const types = Object.keys(tiles);
-      setType(t => types[(types.indexOf(t) + 1) % types.length]);
-    } else {
-      setRotation(r => (r + 1) % 4);
-    }
+    setRotation(r => (r + 1) % 4);
   }
 
-  return <svg width="100%" height="100%" viewBox="0 0 100 200" onClick={mutate} onContextMenu={mutate}> 
-    { Array.from(display).map(([coords, block], i) => (
-      <Block key={i} coords={coords} block={block} />
-    )) }
-  </svg>
+  function changeType(offset) {
+    const types = Object.keys(tiles);
+    setType(t => types[(types.indexOf(t) + offset + types.length) % types.length]);
+  }
+
+  return <Container>
+    <Controls>
+      <span onClick={() => changeType(-1)}>&lt;</span> {type} <span onClick={() => changeType(1)}>&gt;</span>
+    </Controls>
+    <Display>
+      <svg width="100%" height="100%" viewBox="0 0 100 200" onClick={mutate}> 
+      <defs>
+          <pattern
+            id="Pattern" x={0} y={0} width={10} height={10}
+            patternUnits="userSpaceOnUse"
+            shapeRendering="geometricPrecision"
+          >
+            <rect fill="#eeeeee" x="2" y="2" width="6" height="6" />
+          </pattern>
+        </defs>
+        <rect fill="url(#Pattern)" width="100%" height="100%" />
+
+        { Array.from(display).map(([coords, block], i) => (
+          <Block key={i} coords={coords} block={block} />
+        )) }
+      </svg>
+    </Display>
+  </Container>
 }
 
 export default Tetris;

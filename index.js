@@ -33306,7 +33306,7 @@ function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
 function _templateObject5() {
-  var data = _taggedTemplateLiteral(["\n  height: 100%;\n  display: flex;\n  flex-direction: column;\n"]);
+  var data = _taggedTemplateLiteral(["\n  height: 100%;\n  width: 100%;\n  display: flex;\n  flex-direction: column;\n"]);
 
   _templateObject5 = function _templateObject5() {
     return data;
@@ -33899,8 +33899,28 @@ function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
+function _templateObject3() {
+  var data = _taggedTemplateLiteral(["\n  flex: 0 1 auto;\n  overflow: hidden;\n"]);
+
+  _templateObject3 = function _templateObject3() {
+    return data;
+  };
+
+  return data;
+}
+
+function _templateObject2() {
+  var data = _taggedTemplateLiteral(["\n  font-family: sans-serif;\n  text-align: center;\n  cursor: pointer;\n"]);
+
+  _templateObject2 = function _templateObject2() {
+    return data;
+  };
+
+  return data;
+}
+
 function _templateObject() {
-  var data = _taggedTemplateLiteral(["\n\n"]);
+  var data = _taggedTemplateLiteral(["\n  display: flex;\n  flex: 0 1 auto;\n  overflow: hidden;\n  flex-direction: column;\n"]);
 
   _templateObject = function _templateObject() {
     return data;
@@ -33912,6 +33932,10 @@ function _templateObject() {
 function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 var Container = _styledComponents["default"].div(_templateObject());
+
+var Controls = _styledComponents["default"].div(_templateObject2());
+
+var Display = _styledComponents["default"].div(_templateObject3());
 
 var colours = ["#ac92eb", "#4fc1e8", "#a0d568", "#ffce54", "#ed5564"];
 var tiles = {
@@ -34033,26 +34057,50 @@ function Tetris() {
 
   function mutate(e) {
     e.preventDefault();
-
-    if (e.button == 0) {
-      var types = Object.keys(tiles);
-      setType(function (t) {
-        return types[(types.indexOf(t) + 1) % types.length];
-      });
-    } else {
-      setRotation(function (r) {
-        return (r + 1) % 4;
-      });
-    }
+    setRotation(function (r) {
+      return (r + 1) % 4;
+    });
   }
 
-  return /*#__PURE__*/_react["default"].createElement("svg", {
+  function changeType(offset) {
+    var types = Object.keys(tiles);
+    setType(function (t) {
+      return types[(types.indexOf(t) + offset + types.length) % types.length];
+    });
+  }
+
+  return /*#__PURE__*/_react["default"].createElement(Container, null, /*#__PURE__*/_react["default"].createElement(Controls, null, /*#__PURE__*/_react["default"].createElement("span", {
+    onClick: function onClick() {
+      return changeType(-1);
+    }
+  }, "<"), " ", type, " ", /*#__PURE__*/_react["default"].createElement("span", {
+    onClick: function onClick() {
+      return changeType(1);
+    }
+  }, ">")), /*#__PURE__*/_react["default"].createElement(Display, null, /*#__PURE__*/_react["default"].createElement("svg", {
     width: "100%",
     height: "100%",
     viewBox: "0 0 100 200",
-    onClick: mutate,
-    onContextMenu: mutate
-  }, Array.from(display).map(function (_ref8, i) {
+    onClick: mutate
+  }, /*#__PURE__*/_react["default"].createElement("defs", null, /*#__PURE__*/_react["default"].createElement("pattern", {
+    id: "Pattern",
+    x: 0,
+    y: 0,
+    width: 10,
+    height: 10,
+    patternUnits: "userSpaceOnUse",
+    shapeRendering: "geometricPrecision"
+  }, /*#__PURE__*/_react["default"].createElement("rect", {
+    fill: "#eeeeee",
+    x: "2",
+    y: "2",
+    width: "6",
+    height: "6"
+  }))), /*#__PURE__*/_react["default"].createElement("rect", {
+    fill: "url(#Pattern)",
+    width: "100%",
+    height: "100%"
+  }), Array.from(display).map(function (_ref8, i) {
     var _ref9 = _slicedToArray(_ref8, 2),
         coords = _ref9[0],
         block = _ref9[1];
@@ -34062,7 +34110,7 @@ function Tetris() {
       coords: coords,
       block: block
     });
-  }));
+  }))));
 }
 
 var _default = Tetris;
