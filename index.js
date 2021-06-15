@@ -33887,6 +33887,8 @@ function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && Symbol.it
 
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
 
+function _createForOfIteratorHelper(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e2) { throw _e2; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e3) { didErr = true; err = _e3; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
 
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -33973,6 +33975,27 @@ var translate = function translate(_ref, _ref2) {
   return [x1 + x2, y1 + y2];
 };
 
+function codeMapping(code, mapping, dfault) {
+  var _iterator = _createForOfIteratorHelper(mapping),
+      _step;
+
+  try {
+    for (_iterator.s(); !(_step = _iterator.n()).done;) {
+      var _step$value = _slicedToArray(_step.value, 2),
+          key = _step$value[0],
+          value = _step$value[1];
+
+      if (key.includes(code)) return value;
+    }
+  } catch (err) {
+    _iterator.e(err);
+  } finally {
+    _iterator.f();
+  }
+
+  return dfault;
+}
+
 var randomItem = function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
 };
@@ -34048,19 +34071,34 @@ function Tetris() {
       rotation = _useState8[0],
       setRotation = _useState8[1];
 
+  var _useState9 = (0, _react.useState)(false),
+      _useState10 = _slicedToArray(_useState9, 2),
+      showControls = _useState10[0],
+      setShowControls = _useState10[1];
+
   var active = {
     type: type,
     position: position,
     rotation: rotation
   };
   var display = new Map([].concat(_toConsumableArray(blocks), _toConsumableArray(build(active))));
-
-  function mutate(e) {
-    e.preventDefault();
-    setRotation(function (r) {
-      return (r + 1) % 4;
+  var handleKeyDown = (0, _react.useCallback)(function (event) {
+    var move = codeMapping(event.code, new Map([[["KeyW", "ArrowUp"], [0, -1]], [["KeyS", "ArrowDown"], [0, 1]], [["KeyA", "ArrowLeft"], [-1, 0]], [["KeyD", "ArrowRight"], [1, 0]]]), [0, 0]);
+    var rotate = codeMapping(event.code, new Map([[["KeyQ"], -1], [["KeyE"], 1]]), 0);
+    setPosition(function (p) {
+      return translate(p, move);
     });
-  }
+    setRotation(function (r) {
+      return (r + rotate + 4) % 4;
+    });
+  });
+  (0, _react.useEffect)(function () {
+    window.addEventListener('keydown', handleKeyDown); // cleanup this component
+
+    return function () {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   function changeType(offset) {
     var types = Object.keys(tiles);
@@ -34069,7 +34107,21 @@ function Tetris() {
     });
   }
 
-  return /*#__PURE__*/_react["default"].createElement(Container, null, /*#__PURE__*/_react["default"].createElement(Controls, null, /*#__PURE__*/_react["default"].createElement("span", {
+  function handleButton(code) {
+    handleKeyDown({
+      code: code
+    });
+  }
+
+  return /*#__PURE__*/_react["default"].createElement(Container, null, /*#__PURE__*/_react["default"].createElement(Controls, null, /*#__PURE__*/_react["default"].createElement("span", null, /*#__PURE__*/_react["default"].createElement("input", {
+    type: "checkbox",
+    checked: showControls,
+    onChange: function onChange(e) {
+      return setShowControls(function (s) {
+        return !s;
+      });
+    }
+  }), " show controls"), " \xA0\xA0", /*#__PURE__*/_react["default"].createElement("span", {
     onClick: function onClick() {
       return changeType(-1);
     }
@@ -34080,8 +34132,7 @@ function Tetris() {
   }, ">")), /*#__PURE__*/_react["default"].createElement(Display, null, /*#__PURE__*/_react["default"].createElement("svg", {
     width: "100%",
     height: "100%",
-    viewBox: "0 0 100 200",
-    onClick: mutate
+    viewBox: "0 0 100 200"
   }, /*#__PURE__*/_react["default"].createElement("defs", null, /*#__PURE__*/_react["default"].createElement("pattern", {
     id: "Pattern",
     x: 0,
@@ -34110,7 +34161,23 @@ function Tetris() {
       coords: coords,
       block: block
     });
-  }))));
+  }))), showControls && /*#__PURE__*/_react["default"].createElement(Controls, null, /*#__PURE__*/_react["default"].createElement("button", {
+    onClick: function onClick() {
+      return handleButton("KeyQ");
+    }
+  }, "\uD83D\uDD04"), /*#__PURE__*/_react["default"].createElement("button", {
+    onClick: function onClick() {
+      return handleButton("ArrowDown");
+    }
+  }, "\u2B07\uFE0F"), /*#__PURE__*/_react["default"].createElement("button", {
+    onClick: function onClick() {
+      return handleButton("ArrowLeft");
+    }
+  }, "\u2B05\uFE0F"), /*#__PURE__*/_react["default"].createElement("button", {
+    onClick: function onClick() {
+      return handleButton("ArrowRight");
+    }
+  }, "\u27A1\uFE0F")));
 }
 
 var _default = Tetris;

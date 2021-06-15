@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 
 
@@ -71,6 +71,13 @@ const tiles = {
 
 const translate = ([x1, y1], [x2, y2]) => [x1 + x2, y1 + y2];
 
+function codeMapping(code, mapping, dfault) {
+  for (let [key, value] of mapping) {
+    if (key.includes(code)) return value;
+  }
+  return dfault;
+}
+
 const randomItem = items => items[Math.floor(Math.random()*items.length)];
 
 function build(active) {
@@ -108,27 +115,58 @@ function Tetris() {
   const [type, setType] = useState((randomItem(Object.keys(tiles))));
   const [position, setPosition] = useState([2,2]);
   const [rotation, setRotation] = useState(0);
-  
+  const [showControls, setShowControls] = useState(false);
+
   const active = {type, position, rotation};
 
   const display = new Map([...blocks, ...build(active)]);
 
-  function mutate(e) {
-    e.preventDefault();
-    setRotation(r => (r + 1) % 4);
-  }
+  const handleKeyDown = useCallback(event => {
+    const move = codeMapping(
+      event.code, 
+      new Map([
+        [["KeyW", "ArrowUp"], [0, -1]],
+        [["KeyS", "ArrowDown"], [0, 1]],
+        [["KeyA", "ArrowLeft"], [-1, 0]],
+        [["KeyD", "ArrowRight"], [1, 0]]
+      ]),
+      [0, 0]
+    );
+    const rotate = codeMapping(
+      event.code, 
+      new Map([
+        [["KeyQ"], -1],
+        [["KeyE"], 1]
+      ]),
+      0
+    );
+    setPosition(p => translate(p, move));
+    setRotation(r => (r + rotate + 4) % 4);
+  });
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+
+    // cleanup this component
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   function changeType(offset) {
     const types = Object.keys(tiles);
     setType(t => types[(types.indexOf(t) + offset + types.length) % types.length]);
   }
 
+  function handleButton(code) { handleKeyDown({code}) }
+
   return <Container>
     <Controls>
+      <span><input type="checkbox" checked={showControls} onChange={e => setShowControls(s => !s)} /> show controls</span> &nbsp;&nbsp;
       <span onClick={() => changeType(-1)}>&lt;</span> {type} <span onClick={() => changeType(1)}>&gt;</span>
     </Controls>
     <Display>
-      <svg width="100%" height="100%" viewBox="0 0 100 200" onClick={mutate}> 
+      <svg width="100%" height="100%" viewBox="0 0 100 200"> 
       <defs>
           <pattern
             id="Pattern" x={0} y={0} width={10} height={10}
@@ -145,6 +183,12 @@ function Tetris() {
         )) }
       </svg>
     </Display>
+    { showControls && <Controls>
+      <button onClick={() => handleButton("KeyQ")}>🔄</button>
+      <button onClick={() => handleButton("ArrowDown")}>⬇️</button>
+      <button onClick={() => handleButton("ArrowLeft")}>⬅️</button>
+      <button onClick={() => handleButton("ArrowRight")}>➡️</button>
+    </Controls> }
   </Container>
 }
 
