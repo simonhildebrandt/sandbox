@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useReducer } from 'react';
 import styled from 'styled-components';
+import produce from "immer";
 
 
 const Container = styled.div`
@@ -80,23 +81,105 @@ function codeMapping(code, mapping, dfault) {
 
 const randomItem = items => items[Math.floor(Math.random()*items.length)];
 
-function build(active) {
-  const {type, position, rotation} = active;
+function build(state) {
+  const {type, position, rotation} = state;
+
+  if (!type) return [];
+
   const {colour, layouts} = tiles[type];
   const layout = layouts[rotation];
 
-  return layout.map(t => ([
-    translate(position, t),
-    {colour}
-  ]));
+  return layout.map(t => ([ translate(position, t), {colour} ]));
 }
 
-
-
-
-const blocks = new Map();
+const allBlocks = state => [...state.blocks, ...build(state)];
 
 const SCALE = 10;
+const initialState = {
+  type: null,
+  position: null,
+  rotation: 0,
+  blocks: [[[0, 0], {colour: colours[2]}]],
+  newBlock: true,
+  finished: false,
+  clearing: null
+};
+
+const stateUpdater = produce((draft, action) => {
+  console.log({draft, action})
+  switch (action.type) {
+    case 'new_block':
+      draft.newBlock = false;
+      draft.type = randomItem(Object.keys(tiles));
+      draft.position = [5, 0];
+      draft.rotation = 0;
+    case 'advance':
+      if (draft.position) draft.position = translate(draft.position, [0, 1]);
+      break;
+    case 'move':
+      if (draft.position) draft.position = translate(draft.position, action.offset);
+      break;
+      case 'rotate':
+        if (draft.position) draft.rotation = (draft.rotation + action.rotate + 4) % 4;
+      break;
+    case 'change_type':
+      const types = Object.keys(tiles);
+      draft.type = types[(types.indexOf(draft.type) + action.offset + types.length) % types.length];
+      break;
+    
+    default:
+      throw new Error("Invalid update type");
+  }
+
+  return draft;
+});
+
+const getPositions = blocks => blocks.map(b => b[0]);
+const has = (list, [x1,y1]) => list.find(([x2, y2]) => (x1 == x2) && (y1 == y2))
+
+function validPositions(blocks) {
+  return getPositions(blocks).every(([x, y]) => {
+    return (x >= 0) && (x < 10) && (y >= 0) && (y < 20) 
+  })
+}
+
+function noOverlaps(newBlocks, blocks) {
+  return !getPositions(newBlocks).some(newBlock => has(blocks, newBlock));
+}
+
+function ValidState(state) {
+  const newBlocks = build(state);
+  const blocks = getPositions(state.blocks);
+
+  return validPositions(newBlocks) && noOverlaps(newBlocks, blocks);
+}
+
+function stateReducer(state, action) {
+  const fork = stateUpdater(state, action);
+  let newState;
+  if (ValidState(fork)) {
+    newState = fork;
+  } else {
+    newState = state;
+
+    if (action.type == 'new_block') {
+      newState = produce(newState, draft => {
+        draft.finished = true;
+      });
+    }
+
+    if (action.type == 'advance') {
+      newState = produce(newState, draft => {
+        const b = allBlocks(newState);
+        draft.blocks = b;
+        draft.newBlock = true;
+      });
+    }
+  }
+
+  return newState;
+};
+
 
 function transform([x, y]) {
   return `translate(${x * SCALE}, ${y * SCALE})`
@@ -111,18 +194,43 @@ function Block({coords, block}) {
 }
 
 function Tetris() {
-  const [blocks, setBlocks] = useState(() =>new Map([[[0, 0], {colour: colours[2]}]]));
-  const [type, setType] = useState((randomItem(Object.keys(tiles))));
-  const [position, setPosition] = useState([2,2]);
-  const [rotation, setRotation] = useState(0);
+  const [gameState, dispatch] = useReducer(stateReducer, initialState);
+  const { type, newBlock, finished, clearing } = gameState;
+  console.log({gameState});
+
+  // useEffect(() => {
+  //   if (clearing) dispatch({type: 'new_block'})
+  // }, [clearing]);
+
+  // useEffect(() => {
+  //   if (clearing) dispatch({type: 'new_block'})
+  // }, [newBlock]);
+
+  useEffect(() => {
+    if (newBlock) dispatch({type: 'new_block'})
+  }, [newBlock]);
+
   const [showControls, setShowControls] = useState(false);
+  const [advance, setAdvance] = useState(false);
+  useEffect(() => {
+    let cancelId;
+    if (advance) {
+      cancelId = setInterval(() => {
+        dispatch({type: 'advance'})
+      }, 500);
+    } 
 
-  const active = {type, position, rotation};
+    return () => {
+      if (cancelId) window.clearInterval(cancelId);
+    }
+  }, [advance]);
 
-  const display = new Map([...blocks, ...build(active)]);
+  const display = allBlocks(gameState);
 
   const handleKeyDown = useCallback(event => {
-    const move = codeMapping(
+    if (finished) return;
+
+    const offset = codeMapping(
       event.code, 
       new Map([
         [["KeyW", "ArrowUp"], [0, -1]],
@@ -140,8 +248,10 @@ function Tetris() {
       ]),
       0
     );
-    setPosition(p => translate(p, move));
-    setRotation(r => (r + rotate + 4) % 4);
+    dispatch({type: 'move', offset});
+    dispatch({type: 'rotate', rotate});
+    //setPosition(p => translate(p, offset));
+    //setRotation(r => (r + rotate + 4) % 4);
   });
 
   useEffect(() => {
@@ -154,14 +264,15 @@ function Tetris() {
   }, []);
 
   function changeType(offset) {
-    const types = Object.keys(tiles);
-    setType(t => types[(types.indexOf(t) + offset + types.length) % types.length]);
+    dispatch({type: 'change_type', offset});
   }
 
   function handleButton(code) { handleKeyDown({code}) }
 
   return <Container>
     <Controls>
+      <span>{ finished && "Finished!"}</span> &nbsp;&nbsp;
+      <span><input type="checkbox" checked={advance} onChange={e => setAdvance(a => !a)} /> run</span> &nbsp;&nbsp;
       <span><input type="checkbox" checked={showControls} onChange={e => setShowControls(s => !s)} /> show controls</span> &nbsp;&nbsp;
       <span onClick={() => changeType(-1)}>&lt;</span> {type} <span onClick={() => changeType(1)}>&gt;</span>
     </Controls>
@@ -178,7 +289,7 @@ function Tetris() {
         </defs>
         <rect fill="url(#Pattern)" width="100%" height="100%" />
 
-        { Array.from(display).map(([coords, block], i) => (
+        { display.map(([coords, block], i) => (
           <Block key={i} coords={coords} block={block} />
         )) }
       </svg>

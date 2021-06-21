@@ -735,7 +735,7 @@ const useLatest = current => {
 
 var _default = useLatest;
 exports.default = _default;
-},{"react":36}],6:[function(require,module,exports){
+},{"react":39}],6:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -748,7 +748,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 const usePassiveLayoutEffect = _react.default[typeof document !== 'undefined' && document.createElement !== void 0 ? 'useLayoutEffect' : 'useEffect'];
 var _default = usePassiveLayoutEffect;
 exports.default = _default;
-},{"react":36}],7:[function(require,module,exports){
+},{"react":39}],7:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -827,7 +827,7 @@ const getResizeObserver = () => !_resizeObserver ? _resizeObserver = createResiz
 
 var _default = useResizeObserver;
 exports.default = _default;
-},{"@react-hook/latest":5,"@react-hook/passive-layout-effect":6,"raf-schd":27,"resize-observer-polyfill":37}],8:[function(require,module,exports){
+},{"@react-hook/latest":5,"@react-hook/passive-layout-effect":6,"raf-schd":30,"resize-observer-polyfill":40}],8:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -873,7 +873,7 @@ const useSize = (target, options) => {
 
 var _default = useSize;
 exports.default = _default;
-},{"@react-hook/passive-layout-effect":6,"@react-hook/resize-observer":7,"react":36}],9:[function(require,module,exports){
+},{"@react-hook/passive-layout-effect":6,"@react-hook/resize-observer":7,"react":39}],9:[function(require,module,exports){
 'use strict';
 
 var reactIs = require('react-is');
@@ -978,7 +978,1971 @@ function hoistNonReactStatics(targetComponent, sourceComponent, blacklist) {
 
 module.exports = hoistNonReactStatics;
 
-},{"react-is":33}],10:[function(require,module,exports){
+},{"react-is":36}],10:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+var _ref;
+
+// Should be no imports here!
+// Some things that should be evaluated before all else...
+// We only want to know if non-polyfilled symbols are available
+var hasSymbol = typeof Symbol !== "undefined" && typeof
+/*#__PURE__*/
+Symbol("x") === "symbol";
+var hasMap = typeof Map !== "undefined";
+var hasSet = typeof Set !== "undefined";
+var hasProxies = typeof Proxy !== "undefined" && typeof Proxy.revocable !== "undefined" && typeof Reflect !== "undefined";
+/**
+ * The sentinel value returned by producers to replace the draft with undefined.
+ */
+
+var NOTHING = hasSymbol ?
+/*#__PURE__*/
+Symbol.for("immer-nothing") : (_ref = {}, _ref["immer-nothing"] = true, _ref);
+/**
+ * To let Immer treat your class instances as plain immutable objects
+ * (albeit with a custom prototype), you must define either an instance property
+ * or a static property on each of your custom classes.
+ *
+ * Otherwise, your class instance will never be drafted, which means it won't be
+ * safe to mutate in a produce callback.
+ */
+
+var DRAFTABLE = hasSymbol ?
+/*#__PURE__*/
+Symbol.for("immer-draftable") : "__$immer_draftable";
+var DRAFT_STATE = hasSymbol ?
+/*#__PURE__*/
+Symbol.for("immer-state") : "__$immer_state"; // Even a polyfilled Symbol might provide Symbol.iterator
+
+var iteratorSymbol = typeof Symbol != "undefined" && Symbol.iterator || "@@iterator";
+
+var errors = {
+  0: "Illegal state",
+  1: "Immer drafts cannot have computed properties",
+  2: "This object has been frozen and should not be mutated",
+  3: function _(data) {
+    return "Cannot use a proxy that has been revoked. Did you pass an object from inside an immer function to an async process? " + data;
+  },
+  4: "An immer producer returned a new value *and* modified its draft. Either return a new value *or* modify the draft.",
+  5: "Immer forbids circular references",
+  6: "The first or second argument to `produce` must be a function",
+  7: "The third argument to `produce` must be a function or undefined",
+  8: "First argument to `createDraft` must be a plain object, an array, or an immerable object",
+  9: "First argument to `finishDraft` must be a draft returned by `createDraft`",
+  10: "The given draft is already finalized",
+  11: "Object.defineProperty() cannot be used on an Immer draft",
+  12: "Object.setPrototypeOf() cannot be used on an Immer draft",
+  13: "Immer only supports deleting array indices",
+  14: "Immer only supports setting array indices and the 'length' property",
+  15: function _(path) {
+    return "Cannot apply patch, path doesn't resolve: " + path;
+  },
+  16: 'Sets cannot have "replace" patches.',
+  17: function _(op) {
+    return "Unsupported patch operation: " + op;
+  },
+  18: function _(plugin) {
+    return "The plugin for '" + plugin + "' has not been loaded into Immer. To enable the plugin, import and call `enable" + plugin + "()` when initializing your application.";
+  },
+  20: "Cannot use proxies if Proxy, Proxy.revocable or Reflect are not available",
+  21: function _(thing) {
+    return "produce can only be called on things that are draftable: plain objects, arrays, Map, Set or classes that are marked with '[immerable]: true'. Got '" + thing + "'";
+  },
+  22: function _(thing) {
+    return "'current' expects a draft, got: " + thing;
+  },
+  23: function _(thing) {
+    return "'original' expects a draft, got: " + thing;
+  },
+  24: "Patching reserved attributes like __proto__, prototype and constructor is not allowed"
+};
+function die(error) {
+  for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    args[_key - 1] = arguments[_key];
+  }
+
+  {
+    var e = errors[error];
+    var msg = !e ? "unknown error nr: " + error : typeof e === "function" ? e.apply(null, args) : e;
+    throw new Error("[Immer] " + msg);
+  }
+}
+
+var ArchtypeObject = 0;
+var ArchtypeArray = 1;
+var ArchtypeMap = 2;
+var ArchtypeSet = 3;
+var ProxyTypeProxyObject = 0;
+var ProxyTypeProxyArray = 1;
+var ProxyTypeES5Object = 4;
+var ProxyTypeES5Array = 5;
+var ProxyTypeMap = 2;
+var ProxyTypeSet = 3;
+
+/** Returns true if the given value is an Immer draft */
+
+/*#__PURE__*/
+
+function isDraft(value) {
+  return !!value && !!value[DRAFT_STATE];
+}
+/** Returns true if the given value can be drafted by Immer */
+
+/*#__PURE__*/
+
+function isDraftable(value) {
+  if (!value) return false;
+  return isPlainObject(value) || Array.isArray(value) || !!value[DRAFTABLE] || !!value.constructor[DRAFTABLE] || isMap(value) || isSet(value);
+}
+var objectCtorString =
+/*#__PURE__*/
+Object.prototype.constructor.toString();
+/*#__PURE__*/
+
+function isPlainObject(value) {
+  if (!value || typeof value !== "object") return false;
+  var proto = Object.getPrototypeOf(value);
+
+  if (proto === null) {
+    return true;
+  }
+
+  var Ctor = Object.hasOwnProperty.call(proto, "constructor") && proto.constructor;
+  if (Ctor === Object) return true;
+  return typeof Ctor == "function" && Function.toString.call(Ctor) === objectCtorString;
+}
+function original(value) {
+  if (!isDraft(value)) die(23, value);
+  return value[DRAFT_STATE].base_;
+}
+/*#__PURE__*/
+
+var ownKeys = typeof Reflect !== "undefined" && Reflect.ownKeys ? Reflect.ownKeys : typeof Object.getOwnPropertySymbols !== "undefined" ? function (obj) {
+  return Object.getOwnPropertyNames(obj).concat(Object.getOwnPropertySymbols(obj));
+} :
+/* istanbul ignore next */
+Object.getOwnPropertyNames;
+var getOwnPropertyDescriptors = Object.getOwnPropertyDescriptors || function getOwnPropertyDescriptors(target) {
+  // Polyfill needed for Hermes and IE, see https://github.com/facebook/hermes/issues/274
+  var res = {};
+  ownKeys(target).forEach(function (key) {
+    res[key] = Object.getOwnPropertyDescriptor(target, key);
+  });
+  return res;
+};
+function each(obj, iter, enumerableOnly) {
+  if (enumerableOnly === void 0) {
+    enumerableOnly = false;
+  }
+
+  if (getArchtype(obj) === ArchtypeObject) {
+    (enumerableOnly ? Object.keys : ownKeys)(obj).forEach(function (key) {
+      if (!enumerableOnly || typeof key !== "symbol") iter(key, obj[key], obj);
+    });
+  } else {
+    obj.forEach(function (entry, index) {
+      return iter(index, entry, obj);
+    });
+  }
+}
+/*#__PURE__*/
+
+function getArchtype(thing) {
+  /* istanbul ignore next */
+  var state = thing[DRAFT_STATE];
+  return state ? state.type_ > 3 ? state.type_ - 4 // cause Object and Array map back from 4 and 5
+  : state.type_ // others are the same
+  : Array.isArray(thing) ? ArchtypeArray : isMap(thing) ? ArchtypeMap : isSet(thing) ? ArchtypeSet : ArchtypeObject;
+}
+/*#__PURE__*/
+
+function has(thing, prop) {
+  return getArchtype(thing) === ArchtypeMap ? thing.has(prop) : Object.prototype.hasOwnProperty.call(thing, prop);
+}
+/*#__PURE__*/
+
+function get(thing, prop) {
+  // @ts-ignore
+  return getArchtype(thing) === ArchtypeMap ? thing.get(prop) : thing[prop];
+}
+/*#__PURE__*/
+
+function set(thing, propOrOldValue, value) {
+  var t = getArchtype(thing);
+  if (t === ArchtypeMap) thing.set(propOrOldValue, value);else if (t === ArchtypeSet) {
+    thing.delete(propOrOldValue);
+    thing.add(value);
+  } else thing[propOrOldValue] = value;
+}
+/*#__PURE__*/
+
+function is(x, y) {
+  // From: https://github.com/facebook/fbjs/blob/c69904a511b900266935168223063dd8772dfc40/packages/fbjs/src/core/shallowEqual.js
+  if (x === y) {
+    return x !== 0 || 1 / x === 1 / y;
+  } else {
+    return x !== x && y !== y;
+  }
+}
+/*#__PURE__*/
+
+function isMap(target) {
+  return hasMap && target instanceof Map;
+}
+/*#__PURE__*/
+
+function isSet(target) {
+  return hasSet && target instanceof Set;
+}
+/*#__PURE__*/
+
+function latest(state) {
+  return state.copy_ || state.base_;
+}
+/*#__PURE__*/
+
+function shallowCopy(base) {
+  if (Array.isArray(base)) return Array.prototype.slice.call(base);
+  var descriptors = getOwnPropertyDescriptors(base);
+  delete descriptors[DRAFT_STATE];
+  var keys = ownKeys(descriptors);
+
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    var desc = descriptors[key];
+
+    if (desc.writable === false) {
+      desc.writable = true;
+      desc.configurable = true;
+    } // like object.assign, we will read any _own_, get/set accessors. This helps in dealing
+    // with libraries that trap values, like mobx or vue
+    // unlike object.assign, non-enumerables will be copied as well
+
+
+    if (desc.get || desc.set) descriptors[key] = {
+      configurable: true,
+      writable: true,
+      enumerable: desc.enumerable,
+      value: base[key]
+    };
+  }
+
+  return Object.create(Object.getPrototypeOf(base), descriptors);
+}
+function freeze(obj, deep) {
+  if (deep === void 0) {
+    deep = false;
+  }
+
+  if (isFrozen(obj) || isDraft(obj) || !isDraftable(obj)) return obj;
+
+  if (getArchtype(obj) > 1
+  /* Map or Set */
+  ) {
+      obj.set = obj.add = obj.clear = obj.delete = dontMutateFrozenCollections;
+    }
+
+  Object.freeze(obj);
+  if (deep) each(obj, function (key, value) {
+    return freeze(value, true);
+  }, true);
+  return obj;
+}
+
+function dontMutateFrozenCollections() {
+  die(2);
+}
+
+function isFrozen(obj) {
+  if (obj == null || typeof obj !== "object") return true; // See #600, IE dies on non-objects in Object.isFrozen
+
+  return Object.isFrozen(obj);
+}
+
+/** Plugin utilities */
+
+var plugins = {};
+function getPlugin(pluginKey) {
+  var plugin = plugins[pluginKey];
+
+  if (!plugin) {
+    die(18, pluginKey);
+  } // @ts-ignore
+
+
+  return plugin;
+}
+function loadPlugin(pluginKey, implementation) {
+  if (!plugins[pluginKey]) plugins[pluginKey] = implementation;
+}
+
+var currentScope;
+function getCurrentScope() {
+  if ( !currentScope) die(0);
+  return currentScope;
+}
+
+function createScope(parent_, immer_) {
+  return {
+    drafts_: [],
+    parent_: parent_,
+    immer_: immer_,
+    // Whenever the modified draft contains a draft from another scope, we
+    // need to prevent auto-freezing so the unowned draft can be finalized.
+    canAutoFreeze_: true,
+    unfinalizedDrafts_: 0
+  };
+}
+
+function usePatchesInScope(scope, patchListener) {
+  if (patchListener) {
+    getPlugin("Patches"); // assert we have the plugin
+
+    scope.patches_ = [];
+    scope.inversePatches_ = [];
+    scope.patchListener_ = patchListener;
+  }
+}
+function revokeScope(scope) {
+  leaveScope(scope);
+  scope.drafts_.forEach(revokeDraft); // @ts-ignore
+
+  scope.drafts_ = null;
+}
+function leaveScope(scope) {
+  if (scope === currentScope) {
+    currentScope = scope.parent_;
+  }
+}
+function enterScope(immer) {
+  return currentScope = createScope(currentScope, immer);
+}
+
+function revokeDraft(draft) {
+  var state = draft[DRAFT_STATE];
+  if (state.type_ === ProxyTypeProxyObject || state.type_ === ProxyTypeProxyArray) state.revoke_();else state.revoked_ = true;
+}
+
+function processResult(result, scope) {
+  scope.unfinalizedDrafts_ = scope.drafts_.length;
+  var baseDraft = scope.drafts_[0];
+  var isReplaced = result !== undefined && result !== baseDraft;
+  if (!scope.immer_.useProxies_) getPlugin("ES5").willFinalizeES5_(scope, result, isReplaced);
+
+  if (isReplaced) {
+    if (baseDraft[DRAFT_STATE].modified_) {
+      revokeScope(scope);
+      die(4);
+    }
+
+    if (isDraftable(result)) {
+      // Finalize the result in case it contains (or is) a subset of the draft.
+      result = finalize(scope, result);
+      if (!scope.parent_) maybeFreeze(scope, result);
+    }
+
+    if (scope.patches_) {
+      getPlugin("Patches").generateReplacementPatches_(baseDraft[DRAFT_STATE], result, scope.patches_, scope.inversePatches_);
+    }
+  } else {
+    // Finalize the base draft.
+    result = finalize(scope, baseDraft, []);
+  }
+
+  revokeScope(scope);
+
+  if (scope.patches_) {
+    scope.patchListener_(scope.patches_, scope.inversePatches_);
+  }
+
+  return result !== NOTHING ? result : undefined;
+}
+
+function finalize(rootScope, value, path) {
+  // Don't recurse in tho recursive data structures
+  if (isFrozen(value)) return value;
+  var state = value[DRAFT_STATE]; // A plain object, might need freezing, might contain drafts
+
+  if (!state) {
+    each(value, function (key, childValue) {
+      return finalizeProperty(rootScope, state, value, key, childValue, path);
+    }, true // See #590, don't recurse into non-enumarable of non drafted objects
+    );
+    return value;
+  } // Never finalize drafts owned by another scope.
+
+
+  if (state.scope_ !== rootScope) return value; // Unmodified draft, return the (frozen) original
+
+  if (!state.modified_) {
+    maybeFreeze(rootScope, state.base_, true);
+    return state.base_;
+  } // Not finalized yet, let's do that now
+
+
+  if (!state.finalized_) {
+    state.finalized_ = true;
+    state.scope_.unfinalizedDrafts_--;
+    var result = // For ES5, create a good copy from the draft first, with added keys and without deleted keys.
+    state.type_ === ProxyTypeES5Object || state.type_ === ProxyTypeES5Array ? state.copy_ = shallowCopy(state.draft_) : state.copy_; // Finalize all children of the copy
+    // For sets we clone before iterating, otherwise we can get in endless loop due to modifying during iteration, see #628
+    // Although the original test case doesn't seem valid anyway, so if this in the way we can turn the next line
+    // back to each(result, ....)
+
+    each(state.type_ === ProxyTypeSet ? new Set(result) : result, function (key, childValue) {
+      return finalizeProperty(rootScope, state, result, key, childValue, path);
+    }); // everything inside is frozen, we can freeze here
+
+    maybeFreeze(rootScope, result, false); // first time finalizing, let's create those patches
+
+    if (path && rootScope.patches_) {
+      getPlugin("Patches").generatePatches_(state, path, rootScope.patches_, rootScope.inversePatches_);
+    }
+  }
+
+  return state.copy_;
+}
+
+function finalizeProperty(rootScope, parentState, targetObject, prop, childValue, rootPath) {
+  if ( childValue === targetObject) die(5);
+
+  if (isDraft(childValue)) {
+    var path = rootPath && parentState && parentState.type_ !== ProxyTypeSet && // Set objects are atomic since they have no keys.
+    !has(parentState.assigned_, prop) // Skip deep patches for assigned keys.
+    ? rootPath.concat(prop) : undefined; // Drafts owned by `scope` are finalized here.
+
+    var res = finalize(rootScope, childValue, path);
+    set(targetObject, prop, res); // Drafts from another scope must prevented to be frozen
+    // if we got a draft back from finalize, we're in a nested produce and shouldn't freeze
+
+    if (isDraft(res)) {
+      rootScope.canAutoFreeze_ = false;
+    } else return;
+  } // Search new objects for unfinalized drafts. Frozen objects should never contain drafts.
+
+
+  if (isDraftable(childValue) && !isFrozen(childValue)) {
+    if (!rootScope.immer_.autoFreeze_ && rootScope.unfinalizedDrafts_ < 1) {
+      // optimization: if an object is not a draft, and we don't have to
+      // deepfreeze everything, and we are sure that no drafts are left in the remaining object
+      // cause we saw and finalized all drafts already; we can stop visiting the rest of the tree.
+      // This benefits especially adding large data tree's without further processing.
+      // See add-data.js perf test
+      return;
+    }
+
+    finalize(rootScope, childValue); // immer deep freezes plain objects, so if there is no parent state, we freeze as well
+
+    if (!parentState || !parentState.scope_.parent_) maybeFreeze(rootScope, childValue);
+  }
+}
+
+function maybeFreeze(scope, value, deep) {
+  if (deep === void 0) {
+    deep = false;
+  }
+
+  if (scope.immer_.autoFreeze_ && scope.canAutoFreeze_) {
+    freeze(value, deep);
+  }
+}
+
+/**
+ * Returns a new draft of the `base` object.
+ *
+ * The second argument is the parent draft-state (used internally).
+ */
+
+function createProxyProxy(base, parent) {
+  var isArray = Array.isArray(base);
+  var state = {
+    type_: isArray ? ProxyTypeProxyArray : ProxyTypeProxyObject,
+    // Track which produce call this is associated with.
+    scope_: parent ? parent.scope_ : getCurrentScope(),
+    // True for both shallow and deep changes.
+    modified_: false,
+    // Used during finalization.
+    finalized_: false,
+    // Track which properties have been assigned (true) or deleted (false).
+    assigned_: {},
+    // The parent draft state.
+    parent_: parent,
+    // The base state.
+    base_: base,
+    // The base proxy.
+    draft_: null,
+    // The base copy with any updated values.
+    copy_: null,
+    // Called by the `produce` function.
+    revoke_: null,
+    isManual_: false
+  }; // the traps must target something, a bit like the 'real' base.
+  // but also, we need to be able to determine from the target what the relevant state is
+  // (to avoid creating traps per instance to capture the state in closure,
+  // and to avoid creating weird hidden properties as well)
+  // So the trick is to use 'state' as the actual 'target'! (and make sure we intercept everything)
+  // Note that in the case of an array, we put the state in an array to have better Reflect defaults ootb
+
+  var target = state;
+  var traps = objectTraps;
+
+  if (isArray) {
+    target = [state];
+    traps = arrayTraps;
+  }
+
+  var _Proxy$revocable = Proxy.revocable(target, traps),
+      revoke = _Proxy$revocable.revoke,
+      proxy = _Proxy$revocable.proxy;
+
+  state.draft_ = proxy;
+  state.revoke_ = revoke;
+  return proxy;
+}
+/**
+ * Object drafts
+ */
+
+var objectTraps = {
+  get: function get(state, prop) {
+    if (prop === DRAFT_STATE) return state;
+    var source = latest(state);
+
+    if (!has(source, prop)) {
+      // non-existing or non-own property...
+      return readPropFromProto(state, source, prop);
+    }
+
+    var value = source[prop];
+
+    if (state.finalized_ || !isDraftable(value)) {
+      return value;
+    } // Check for existing draft in modified state.
+    // Assigned values are never drafted. This catches any drafts we created, too.
+
+
+    if (value === peek(state.base_, prop)) {
+      prepareCopy(state);
+      return state.copy_[prop] = createProxy(state.scope_.immer_, value, state);
+    }
+
+    return value;
+  },
+  has: function has(state, prop) {
+    return prop in latest(state);
+  },
+  ownKeys: function ownKeys(state) {
+    return Reflect.ownKeys(latest(state));
+  },
+  set: function set(state, prop
+  /* strictly not, but helps TS */
+  , value) {
+    var desc = getDescriptorFromProto(latest(state), prop);
+
+    if (desc === null || desc === void 0 ? void 0 : desc.set) {
+      // special case: if this write is captured by a setter, we have
+      // to trigger it with the correct context
+      desc.set.call(state.draft_, value);
+      return true;
+    }
+
+    if (!state.modified_) {
+      // the last check is because we need to be able to distinguish setting a non-existing to undefined (which is a change)
+      // from setting an existing property with value undefined to undefined (which is not a change)
+      var current = peek(latest(state), prop); // special case, if we assigning the original value to a draft, we can ignore the assignment
+
+      var currentState = current === null || current === void 0 ? void 0 : current[DRAFT_STATE];
+
+      if (currentState && currentState.base_ === value) {
+        state.copy_[prop] = value;
+        state.assigned_[prop] = false;
+        return true;
+      }
+
+      if (is(value, current) && (value !== undefined || has(state.base_, prop))) return true;
+      prepareCopy(state);
+      markChanged(state);
+    }
+
+    if (state.copy_[prop] === value && typeof value !== "number") return true; // @ts-ignore
+
+    state.copy_[prop] = value;
+    state.assigned_[prop] = true;
+    return true;
+  },
+  deleteProperty: function deleteProperty(state, prop) {
+    // The `undefined` check is a fast path for pre-existing keys.
+    if (peek(state.base_, prop) !== undefined || prop in state.base_) {
+      state.assigned_[prop] = false;
+      prepareCopy(state);
+      markChanged(state);
+    } else {
+      // if an originally not assigned property was deleted
+      delete state.assigned_[prop];
+    } // @ts-ignore
+
+
+    if (state.copy_) delete state.copy_[prop];
+    return true;
+  },
+  // Note: We never coerce `desc.value` into an Immer draft, because we can't make
+  // the same guarantee in ES5 mode.
+  getOwnPropertyDescriptor: function getOwnPropertyDescriptor(state, prop) {
+    var owner = latest(state);
+    var desc = Reflect.getOwnPropertyDescriptor(owner, prop);
+    if (!desc) return desc;
+    return {
+      writable: true,
+      configurable: state.type_ !== ProxyTypeProxyArray || prop !== "length",
+      enumerable: desc.enumerable,
+      value: owner[prop]
+    };
+  },
+  defineProperty: function defineProperty() {
+    die(11);
+  },
+  getPrototypeOf: function getPrototypeOf(state) {
+    return Object.getPrototypeOf(state.base_);
+  },
+  setPrototypeOf: function setPrototypeOf() {
+    die(12);
+  }
+};
+/**
+ * Array drafts
+ */
+
+var arrayTraps = {};
+each(objectTraps, function (key, fn) {
+  // @ts-ignore
+  arrayTraps[key] = function () {
+    arguments[0] = arguments[0][0];
+    return fn.apply(this, arguments);
+  };
+});
+
+arrayTraps.deleteProperty = function (state, prop) {
+  if ( isNaN(parseInt(prop))) die(13);
+  return objectTraps.deleteProperty.call(this, state[0], prop);
+};
+
+arrayTraps.set = function (state, prop, value) {
+  if ( prop !== "length" && isNaN(parseInt(prop))) die(14);
+  return objectTraps.set.call(this, state[0], prop, value, state[0]);
+}; // Access a property without creating an Immer draft.
+
+
+function peek(draft, prop) {
+  var state = draft[DRAFT_STATE];
+  var source = state ? latest(state) : draft;
+  return source[prop];
+}
+
+function readPropFromProto(state, source, prop) {
+  var _desc$get;
+
+  var desc = getDescriptorFromProto(source, prop);
+  return desc ? "value" in desc ? desc.value : // This is a very special case, if the prop is a getter defined by the
+  // prototype, we should invoke it with the draft as context!
+  (_desc$get = desc.get) === null || _desc$get === void 0 ? void 0 : _desc$get.call(state.draft_) : undefined;
+}
+
+function getDescriptorFromProto(source, prop) {
+  // 'in' checks proto!
+  if (!(prop in source)) return undefined;
+  var proto = Object.getPrototypeOf(source);
+
+  while (proto) {
+    var desc = Object.getOwnPropertyDescriptor(proto, prop);
+    if (desc) return desc;
+    proto = Object.getPrototypeOf(proto);
+  }
+
+  return undefined;
+}
+
+function markChanged(state) {
+  if (!state.modified_) {
+    state.modified_ = true;
+
+    if (state.parent_) {
+      markChanged(state.parent_);
+    }
+  }
+}
+function prepareCopy(state) {
+  if (!state.copy_) {
+    state.copy_ = shallowCopy(state.base_);
+  }
+}
+
+var Immer =
+/*#__PURE__*/
+function () {
+  function Immer(config) {
+    var _this = this;
+
+    this.useProxies_ = hasProxies;
+    this.autoFreeze_ = true;
+    /**
+     * The `produce` function takes a value and a "recipe function" (whose
+     * return value often depends on the base state). The recipe function is
+     * free to mutate its first argument however it wants. All mutations are
+     * only ever applied to a __copy__ of the base state.
+     *
+     * Pass only a function to create a "curried producer" which relieves you
+     * from passing the recipe function every time.
+     *
+     * Only plain objects and arrays are made mutable. All other objects are
+     * considered uncopyable.
+     *
+     * Note: This function is __bound__ to its `Immer` instance.
+     *
+     * @param {any} base - the initial state
+     * @param {Function} producer - function that receives a proxy of the base state as first argument and which can be freely modified
+     * @param {Function} patchListener - optional function that will be called with all the patches produced here
+     * @returns {any} a new state, or the initial state if nothing was modified
+     */
+
+    this.produce = function (base, recipe, patchListener) {
+      // curried invocation
+      if (typeof base === "function" && typeof recipe !== "function") {
+        var defaultBase = recipe;
+        recipe = base;
+        var self = _this;
+        return function curriedProduce(base) {
+          var _this2 = this;
+
+          if (base === void 0) {
+            base = defaultBase;
+          }
+
+          for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+            args[_key - 1] = arguments[_key];
+          }
+
+          return self.produce(base, function (draft) {
+            var _recipe;
+
+            return (_recipe = recipe).call.apply(_recipe, [_this2, draft].concat(args));
+          }); // prettier-ignore
+        };
+      }
+
+      if (typeof recipe !== "function") die(6);
+      if (patchListener !== undefined && typeof patchListener !== "function") die(7);
+      var result; // Only plain objects, arrays, and "immerable classes" are drafted.
+
+      if (isDraftable(base)) {
+        var scope = enterScope(_this);
+        var proxy = createProxy(_this, base, undefined);
+        var hasError = true;
+
+        try {
+          result = recipe(proxy);
+          hasError = false;
+        } finally {
+          // finally instead of catch + rethrow better preserves original stack
+          if (hasError) revokeScope(scope);else leaveScope(scope);
+        }
+
+        if (typeof Promise !== "undefined" && result instanceof Promise) {
+          return result.then(function (result) {
+            usePatchesInScope(scope, patchListener);
+            return processResult(result, scope);
+          }, function (error) {
+            revokeScope(scope);
+            throw error;
+          });
+        }
+
+        usePatchesInScope(scope, patchListener);
+        return processResult(result, scope);
+      } else if (!base || typeof base !== "object") {
+        result = recipe(base);
+        if (result === NOTHING) return undefined;
+        if (result === undefined) result = base;
+        if (_this.autoFreeze_) freeze(result, true);
+        return result;
+      } else die(21, base);
+    };
+
+    this.produceWithPatches = function (arg1, arg2, arg3) {
+      if (typeof arg1 === "function") {
+        return function (state) {
+          for (var _len2 = arguments.length, args = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+            args[_key2 - 1] = arguments[_key2];
+          }
+
+          return _this.produceWithPatches(state, function (draft) {
+            return arg1.apply(void 0, [draft].concat(args));
+          });
+        };
+      }
+
+      var patches, inversePatches;
+
+      var nextState = _this.produce(arg1, arg2, function (p, ip) {
+        patches = p;
+        inversePatches = ip;
+      });
+
+      return [nextState, patches, inversePatches];
+    };
+
+    if (typeof (config === null || config === void 0 ? void 0 : config.useProxies) === "boolean") this.setUseProxies(config.useProxies);
+    if (typeof (config === null || config === void 0 ? void 0 : config.autoFreeze) === "boolean") this.setAutoFreeze(config.autoFreeze);
+  }
+
+  var _proto = Immer.prototype;
+
+  _proto.createDraft = function createDraft(base) {
+    if (!isDraftable(base)) die(8);
+    if (isDraft(base)) base = current(base);
+    var scope = enterScope(this);
+    var proxy = createProxy(this, base, undefined);
+    proxy[DRAFT_STATE].isManual_ = true;
+    leaveScope(scope);
+    return proxy;
+  };
+
+  _proto.finishDraft = function finishDraft(draft, patchListener) {
+    var state = draft && draft[DRAFT_STATE];
+
+    {
+      if (!state || !state.isManual_) die(9);
+      if (state.finalized_) die(10);
+    }
+
+    var scope = state.scope_;
+    usePatchesInScope(scope, patchListener);
+    return processResult(undefined, scope);
+  }
+  /**
+   * Pass true to automatically freeze all copies created by Immer.
+   *
+   * By default, auto-freezing is enabled.
+   */
+  ;
+
+  _proto.setAutoFreeze = function setAutoFreeze(value) {
+    this.autoFreeze_ = value;
+  }
+  /**
+   * Pass true to use the ES2015 `Proxy` class when creating drafts, which is
+   * always faster than using ES5 proxies.
+   *
+   * By default, feature detection is used, so calling this is rarely necessary.
+   */
+  ;
+
+  _proto.setUseProxies = function setUseProxies(value) {
+    if (value && !hasProxies) {
+      die(20);
+    }
+
+    this.useProxies_ = value;
+  };
+
+  _proto.applyPatches = function applyPatches(base, patches) {
+    // If a patch replaces the entire state, take that replacement as base
+    // before applying patches
+    var i;
+
+    for (i = patches.length - 1; i >= 0; i--) {
+      var patch = patches[i];
+
+      if (patch.path.length === 0 && patch.op === "replace") {
+        base = patch.value;
+        break;
+      }
+    }
+
+    var applyPatchesImpl = getPlugin("Patches").applyPatches_;
+
+    if (isDraft(base)) {
+      // N.B: never hits if some patch a replacement, patches are never drafts
+      return applyPatchesImpl(base, patches);
+    } // Otherwise, produce a copy of the base state.
+
+
+    return this.produce(base, function (draft) {
+      return applyPatchesImpl(draft, patches.slice(i + 1));
+    });
+  };
+
+  return Immer;
+}();
+function createProxy(immer, value, parent) {
+  // precondition: createProxy should be guarded by isDraftable, so we know we can safely draft
+  var draft = isMap(value) ? getPlugin("MapSet").proxyMap_(value, parent) : isSet(value) ? getPlugin("MapSet").proxySet_(value, parent) : immer.useProxies_ ? createProxyProxy(value, parent) : getPlugin("ES5").createES5Proxy_(value, parent);
+  var scope = parent ? parent.scope_ : getCurrentScope();
+  scope.drafts_.push(draft);
+  return draft;
+}
+
+function current(value) {
+  if (!isDraft(value)) die(22, value);
+  return currentImpl(value);
+}
+
+function currentImpl(value) {
+  if (!isDraftable(value)) return value;
+  var state = value[DRAFT_STATE];
+  var copy;
+  var archType = getArchtype(value);
+
+  if (state) {
+    if (!state.modified_ && (state.type_ < 4 || !getPlugin("ES5").hasChanges_(state))) return state.base_; // Optimization: avoid generating new drafts during copying
+
+    state.finalized_ = true;
+    copy = copyHelper(value, archType);
+    state.finalized_ = false;
+  } else {
+    copy = copyHelper(value, archType);
+  }
+
+  each(copy, function (key, childValue) {
+    if (state && get(state.base_, key) === childValue) return; // no need to copy or search in something that didn't change
+
+    set(copy, key, currentImpl(childValue));
+  }); // In the future, we might consider freezing here, based on the current settings
+
+  return archType === ArchtypeSet ? new Set(copy) : copy;
+}
+
+function copyHelper(value, archType) {
+  // creates a shallow copy, even if it is a map or set
+  switch (archType) {
+    case ArchtypeMap:
+      return new Map(value);
+
+    case ArchtypeSet:
+      // Set will be cloned as array temporarily, so that we can replace individual items
+      return Array.from(value);
+  }
+
+  return shallowCopy(value);
+}
+
+function enableES5() {
+  function willFinalizeES5_(scope, result, isReplaced) {
+    if (!isReplaced) {
+      if (scope.patches_) {
+        markChangesRecursively(scope.drafts_[0]);
+      } // This is faster when we don't care about which attributes changed.
+
+
+      markChangesSweep(scope.drafts_);
+    } // When a child draft is returned, look for changes.
+    else if (isDraft(result) && result[DRAFT_STATE].scope_ === scope) {
+        markChangesSweep(scope.drafts_);
+      }
+  }
+
+  function createES5Draft(isArray, base) {
+    if (isArray) {
+      var draft = new Array(base.length);
+
+      for (var i = 0; i < base.length; i++) {
+        Object.defineProperty(draft, "" + i, proxyProperty(i, true));
+      }
+
+      return draft;
+    } else {
+      var _descriptors = getOwnPropertyDescriptors(base);
+
+      delete _descriptors[DRAFT_STATE];
+      var keys = ownKeys(_descriptors);
+
+      for (var _i = 0; _i < keys.length; _i++) {
+        var key = keys[_i];
+        _descriptors[key] = proxyProperty(key, isArray || !!_descriptors[key].enumerable);
+      }
+
+      return Object.create(Object.getPrototypeOf(base), _descriptors);
+    }
+  }
+
+  function createES5Proxy_(base, parent) {
+    var isArray = Array.isArray(base);
+    var draft = createES5Draft(isArray, base);
+    var state = {
+      type_: isArray ? ProxyTypeES5Array : ProxyTypeES5Object,
+      scope_: parent ? parent.scope_ : getCurrentScope(),
+      modified_: false,
+      finalized_: false,
+      assigned_: {},
+      parent_: parent,
+      // base is the object we are drafting
+      base_: base,
+      // draft is the draft object itself, that traps all reads and reads from either the base (if unmodified) or copy (if modified)
+      draft_: draft,
+      copy_: null,
+      revoked_: false,
+      isManual_: false
+    };
+    Object.defineProperty(draft, DRAFT_STATE, {
+      value: state,
+      // enumerable: false <- the default
+      writable: true
+    });
+    return draft;
+  } // property descriptors are recycled to make sure we don't create a get and set closure per property,
+  // but share them all instead
+
+
+  var descriptors = {};
+
+  function proxyProperty(prop, enumerable) {
+    var desc = descriptors[prop];
+
+    if (desc) {
+      desc.enumerable = enumerable;
+    } else {
+      descriptors[prop] = desc = {
+        configurable: true,
+        enumerable: enumerable,
+        get: function get() {
+          var state = this[DRAFT_STATE];
+          assertUnrevoked(state); // @ts-ignore
+
+          return objectTraps.get(state, prop);
+        },
+        set: function set(value) {
+          var state = this[DRAFT_STATE];
+          assertUnrevoked(state); // @ts-ignore
+
+          objectTraps.set(state, prop, value);
+        }
+      };
+    }
+
+    return desc;
+  } // This looks expensive, but only proxies are visited, and only objects without known changes are scanned.
+
+
+  function markChangesSweep(drafts) {
+    // The natural order of drafts in the `scope` array is based on when they
+    // were accessed. By processing drafts in reverse natural order, we have a
+    // better chance of processing leaf nodes first. When a leaf node is known to
+    // have changed, we can avoid any traversal of its ancestor nodes.
+    for (var i = drafts.length - 1; i >= 0; i--) {
+      var state = drafts[i][DRAFT_STATE];
+
+      if (!state.modified_) {
+        switch (state.type_) {
+          case ProxyTypeES5Array:
+            if (hasArrayChanges(state)) markChanged(state);
+            break;
+
+          case ProxyTypeES5Object:
+            if (hasObjectChanges(state)) markChanged(state);
+            break;
+        }
+      }
+    }
+  }
+
+  function markChangesRecursively(object) {
+    if (!object || typeof object !== "object") return;
+    var state = object[DRAFT_STATE];
+    if (!state) return;
+    var base_ = state.base_,
+        draft_ = state.draft_,
+        assigned_ = state.assigned_,
+        type_ = state.type_;
+
+    if (type_ === ProxyTypeES5Object) {
+      // Look for added keys.
+      // probably there is a faster way to detect changes, as sweep + recurse seems to do some
+      // unnecessary work.
+      // also: probably we can store the information we detect here, to speed up tree finalization!
+      each(draft_, function (key) {
+        if (key === DRAFT_STATE) return; // The `undefined` check is a fast path for pre-existing keys.
+
+        if (base_[key] === undefined && !has(base_, key)) {
+          assigned_[key] = true;
+          markChanged(state);
+        } else if (!assigned_[key]) {
+          // Only untouched properties trigger recursion.
+          markChangesRecursively(draft_[key]);
+        }
+      }); // Look for removed keys.
+
+      each(base_, function (key) {
+        // The `undefined` check is a fast path for pre-existing keys.
+        if (draft_[key] === undefined && !has(draft_, key)) {
+          assigned_[key] = false;
+          markChanged(state);
+        }
+      });
+    } else if (type_ === ProxyTypeES5Array) {
+      if (hasArrayChanges(state)) {
+        markChanged(state);
+        assigned_.length = true;
+      }
+
+      if (draft_.length < base_.length) {
+        for (var i = draft_.length; i < base_.length; i++) {
+          assigned_[i] = false;
+        }
+      } else {
+        for (var _i2 = base_.length; _i2 < draft_.length; _i2++) {
+          assigned_[_i2] = true;
+        }
+      } // Minimum count is enough, the other parts has been processed.
+
+
+      var min = Math.min(draft_.length, base_.length);
+
+      for (var _i3 = 0; _i3 < min; _i3++) {
+        // Only untouched indices trigger recursion.
+        if (assigned_[_i3] === undefined) markChangesRecursively(draft_[_i3]);
+      }
+    }
+  }
+
+  function hasObjectChanges(state) {
+    var base_ = state.base_,
+        draft_ = state.draft_; // Search for added keys and changed keys. Start at the back, because
+    // non-numeric keys are ordered by time of definition on the object.
+
+    var keys = ownKeys(draft_);
+
+    for (var i = keys.length - 1; i >= 0; i--) {
+      var key = keys[i];
+      if (key === DRAFT_STATE) continue;
+      var baseValue = base_[key]; // The `undefined` check is a fast path for pre-existing keys.
+
+      if (baseValue === undefined && !has(base_, key)) {
+        return true;
+      } // Once a base key is deleted, future changes go undetected, because its
+      // descriptor is erased. This branch detects any missed changes.
+      else {
+          var value = draft_[key];
+
+          var _state = value && value[DRAFT_STATE];
+
+          if (_state ? _state.base_ !== baseValue : !is(value, baseValue)) {
+            return true;
+          }
+        }
+    } // At this point, no keys were added or changed.
+    // Compare key count to determine if keys were deleted.
+
+
+    var baseIsDraft = !!base_[DRAFT_STATE];
+    return keys.length !== ownKeys(base_).length + (baseIsDraft ? 0 : 1); // + 1 to correct for DRAFT_STATE
+  }
+
+  function hasArrayChanges(state) {
+    var draft_ = state.draft_;
+    if (draft_.length !== state.base_.length) return true; // See #116
+    // If we first shorten the length, our array interceptors will be removed.
+    // If after that new items are added, result in the same original length,
+    // those last items will have no intercepting property.
+    // So if there is no own descriptor on the last position, we know that items were removed and added
+    // N.B.: splice, unshift, etc only shift values around, but not prop descriptors, so we only have to check
+    // the last one
+
+    var descriptor = Object.getOwnPropertyDescriptor(draft_, draft_.length - 1); // descriptor can be null, but only for newly created sparse arrays, eg. new Array(10)
+
+    if (descriptor && !descriptor.get) return true; // For all other cases, we don't have to compare, as they would have been picked up by the index setters
+
+    return false;
+  }
+
+  function hasChanges_(state) {
+    return state.type_ === ProxyTypeES5Object ? hasObjectChanges(state) : hasArrayChanges(state);
+  }
+
+  function assertUnrevoked(state
+  /*ES5State | MapState | SetState*/
+  ) {
+    if (state.revoked_) die(3, JSON.stringify(latest(state)));
+  }
+
+  loadPlugin("ES5", {
+    createES5Proxy_: createES5Proxy_,
+    willFinalizeES5_: willFinalizeES5_,
+    hasChanges_: hasChanges_
+  });
+}
+
+function enablePatches() {
+  var REPLACE = "replace";
+  var ADD = "add";
+  var REMOVE = "remove";
+
+  function generatePatches_(state, basePath, patches, inversePatches) {
+    switch (state.type_) {
+      case ProxyTypeProxyObject:
+      case ProxyTypeES5Object:
+      case ProxyTypeMap:
+        return generatePatchesFromAssigned(state, basePath, patches, inversePatches);
+
+      case ProxyTypeES5Array:
+      case ProxyTypeProxyArray:
+        return generateArrayPatches(state, basePath, patches, inversePatches);
+
+      case ProxyTypeSet:
+        return generateSetPatches(state, basePath, patches, inversePatches);
+    }
+  }
+
+  function generateArrayPatches(state, basePath, patches, inversePatches) {
+    var base_ = state.base_,
+        assigned_ = state.assigned_;
+    var copy_ = state.copy_; // Reduce complexity by ensuring `base` is never longer.
+
+    if (copy_.length < base_.length) {
+      var _ref = [copy_, base_];
+      base_ = _ref[0];
+      copy_ = _ref[1];
+      var _ref2 = [inversePatches, patches];
+      patches = _ref2[0];
+      inversePatches = _ref2[1];
+    } // Process replaced indices.
+
+
+    for (var i = 0; i < base_.length; i++) {
+      if (assigned_[i] && copy_[i] !== base_[i]) {
+        var path = basePath.concat([i]);
+        patches.push({
+          op: REPLACE,
+          path: path,
+          // Need to maybe clone it, as it can in fact be the original value
+          // due to the base/copy inversion at the start of this function
+          value: clonePatchValueIfNeeded(copy_[i])
+        });
+        inversePatches.push({
+          op: REPLACE,
+          path: path,
+          value: clonePatchValueIfNeeded(base_[i])
+        });
+      }
+    } // Process added indices.
+
+
+    for (var _i = base_.length; _i < copy_.length; _i++) {
+      var _path = basePath.concat([_i]);
+
+      patches.push({
+        op: ADD,
+        path: _path,
+        // Need to maybe clone it, as it can in fact be the original value
+        // due to the base/copy inversion at the start of this function
+        value: clonePatchValueIfNeeded(copy_[_i])
+      });
+    }
+
+    if (base_.length < copy_.length) {
+      inversePatches.push({
+        op: REPLACE,
+        path: basePath.concat(["length"]),
+        value: base_.length
+      });
+    }
+  } // This is used for both Map objects and normal objects.
+
+
+  function generatePatchesFromAssigned(state, basePath, patches, inversePatches) {
+    var base_ = state.base_,
+        copy_ = state.copy_;
+    each(state.assigned_, function (key, assignedValue) {
+      var origValue = get(base_, key);
+      var value = get(copy_, key);
+      var op = !assignedValue ? REMOVE : has(base_, key) ? REPLACE : ADD;
+      if (origValue === value && op === REPLACE) return;
+      var path = basePath.concat(key);
+      patches.push(op === REMOVE ? {
+        op: op,
+        path: path
+      } : {
+        op: op,
+        path: path,
+        value: value
+      });
+      inversePatches.push(op === ADD ? {
+        op: REMOVE,
+        path: path
+      } : op === REMOVE ? {
+        op: ADD,
+        path: path,
+        value: clonePatchValueIfNeeded(origValue)
+      } : {
+        op: REPLACE,
+        path: path,
+        value: clonePatchValueIfNeeded(origValue)
+      });
+    });
+  }
+
+  function generateSetPatches(state, basePath, patches, inversePatches) {
+    var base_ = state.base_,
+        copy_ = state.copy_;
+    var i = 0;
+    base_.forEach(function (value) {
+      if (!copy_.has(value)) {
+        var path = basePath.concat([i]);
+        patches.push({
+          op: REMOVE,
+          path: path,
+          value: value
+        });
+        inversePatches.unshift({
+          op: ADD,
+          path: path,
+          value: value
+        });
+      }
+
+      i++;
+    });
+    i = 0;
+    copy_.forEach(function (value) {
+      if (!base_.has(value)) {
+        var path = basePath.concat([i]);
+        patches.push({
+          op: ADD,
+          path: path,
+          value: value
+        });
+        inversePatches.unshift({
+          op: REMOVE,
+          path: path,
+          value: value
+        });
+      }
+
+      i++;
+    });
+  }
+
+  function generateReplacementPatches_(rootState, replacement, patches, inversePatches) {
+    patches.push({
+      op: REPLACE,
+      path: [],
+      value: replacement
+    });
+    inversePatches.push({
+      op: REPLACE,
+      path: [],
+      value: rootState.base_
+    });
+  }
+
+  function applyPatches_(draft, patches) {
+    patches.forEach(function (patch) {
+      var path = patch.path,
+          op = patch.op;
+      var base = draft;
+
+      for (var i = 0; i < path.length - 1; i++) {
+        var parentType = getArchtype(base);
+        var p = path[i]; // See #738, avoid prototype pollution
+
+        if ((parentType === ArchtypeObject || parentType === ArchtypeArray) && (p === "__proto__" || p === "constructor")) die(24);
+        if (typeof base === "function" && p === "prototype") die(24);
+        base = get(base, p);
+        if (typeof base !== "object") die(15, path.join("/"));
+      }
+
+      var type = getArchtype(base);
+      var value = deepClonePatchValue(patch.value); // used to clone patch to ensure original patch is not modified, see #411
+
+      var key = path[path.length - 1];
+
+      switch (op) {
+        case REPLACE:
+          switch (type) {
+            case ArchtypeMap:
+              return base.set(key, value);
+
+            /* istanbul ignore next */
+
+            case ArchtypeSet:
+              die(16);
+
+            default:
+              // if value is an object, then it's assigned by reference
+              // in the following add or remove ops, the value field inside the patch will also be modifyed
+              // so we use value from the cloned patch
+              // @ts-ignore
+              return base[key] = value;
+          }
+
+        case ADD:
+          switch (type) {
+            case ArchtypeArray:
+              return base.splice(key, 0, value);
+
+            case ArchtypeMap:
+              return base.set(key, value);
+
+            case ArchtypeSet:
+              return base.add(value);
+
+            default:
+              return base[key] = value;
+          }
+
+        case REMOVE:
+          switch (type) {
+            case ArchtypeArray:
+              return base.splice(key, 1);
+
+            case ArchtypeMap:
+              return base.delete(key);
+
+            case ArchtypeSet:
+              return base.delete(patch.value);
+
+            default:
+              return delete base[key];
+          }
+
+        default:
+          die(17, op);
+      }
+    });
+    return draft;
+  }
+
+  function deepClonePatchValue(obj) {
+    if (!isDraftable(obj)) return obj;
+    if (Array.isArray(obj)) return obj.map(deepClonePatchValue);
+    if (isMap(obj)) return new Map(Array.from(obj.entries()).map(function (_ref3) {
+      var k = _ref3[0],
+          v = _ref3[1];
+      return [k, deepClonePatchValue(v)];
+    }));
+    if (isSet(obj)) return new Set(Array.from(obj).map(deepClonePatchValue));
+    var cloned = Object.create(Object.getPrototypeOf(obj));
+
+    for (var key in obj) {
+      cloned[key] = deepClonePatchValue(obj[key]);
+    }
+
+    if (has(obj, DRAFTABLE)) cloned[DRAFTABLE] = obj[DRAFTABLE];
+    return cloned;
+  }
+
+  function clonePatchValueIfNeeded(obj) {
+    if (isDraft(obj)) {
+      return deepClonePatchValue(obj);
+    } else return obj;
+  }
+
+  loadPlugin("Patches", {
+    applyPatches_: applyPatches_,
+    generatePatches_: generatePatches_,
+    generateReplacementPatches_: generateReplacementPatches_
+  });
+}
+
+// types only!
+function enableMapSet() {
+  /* istanbul ignore next */
+  var _extendStatics = function extendStatics(d, b) {
+    _extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) {
+        if (b.hasOwnProperty(p)) d[p] = b[p];
+      }
+    };
+
+    return _extendStatics(d, b);
+  }; // Ugly hack to resolve #502 and inherit built in Map / Set
+
+
+  function __extends(d, b) {
+    _extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = ( // @ts-ignore
+    __.prototype = b.prototype, new __());
+  }
+
+  var DraftMap = function (_super) {
+    __extends(DraftMap, _super); // Create class manually, cause #502
+
+
+    function DraftMap(target, parent) {
+      this[DRAFT_STATE] = {
+        type_: ProxyTypeMap,
+        parent_: parent,
+        scope_: parent ? parent.scope_ : getCurrentScope(),
+        modified_: false,
+        finalized_: false,
+        copy_: undefined,
+        assigned_: undefined,
+        base_: target,
+        draft_: this,
+        isManual_: false,
+        revoked_: false
+      };
+      return this;
+    }
+
+    var p = DraftMap.prototype;
+    Object.defineProperty(p, "size", {
+      get: function get() {
+        return latest(this[DRAFT_STATE]).size;
+      } // enumerable: false,
+      // configurable: true
+
+    });
+
+    p.has = function (key) {
+      return latest(this[DRAFT_STATE]).has(key);
+    };
+
+    p.set = function (key, value) {
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+
+      if (!latest(state).has(key) || latest(state).get(key) !== value) {
+        prepareMapCopy(state);
+        markChanged(state);
+        state.assigned_.set(key, true);
+        state.copy_.set(key, value);
+        state.assigned_.set(key, true);
+      }
+
+      return this;
+    };
+
+    p.delete = function (key) {
+      if (!this.has(key)) {
+        return false;
+      }
+
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      prepareMapCopy(state);
+      markChanged(state);
+      state.assigned_.set(key, false);
+      state.copy_.delete(key);
+      return true;
+    };
+
+    p.clear = function () {
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+
+      if (latest(state).size) {
+        prepareMapCopy(state);
+        markChanged(state);
+        state.assigned_ = new Map();
+        each(state.base_, function (key) {
+          state.assigned_.set(key, false);
+        });
+        state.copy_.clear();
+      }
+    };
+
+    p.forEach = function (cb, thisArg) {
+      var _this = this;
+
+      var state = this[DRAFT_STATE];
+      latest(state).forEach(function (_value, key, _map) {
+        cb.call(thisArg, _this.get(key), key, _this);
+      });
+    };
+
+    p.get = function (key) {
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      var value = latest(state).get(key);
+
+      if (state.finalized_ || !isDraftable(value)) {
+        return value;
+      }
+
+      if (value !== state.base_.get(key)) {
+        return value; // either already drafted or reassigned
+      } // despite what it looks, this creates a draft only once, see above condition
+
+
+      var draft = createProxy(state.scope_.immer_, value, state);
+      prepareMapCopy(state);
+      state.copy_.set(key, draft);
+      return draft;
+    };
+
+    p.keys = function () {
+      return latest(this[DRAFT_STATE]).keys();
+    };
+
+    p.values = function () {
+      var _this2 = this,
+          _ref;
+
+      var iterator = this.keys();
+      return _ref = {}, _ref[iteratorSymbol] = function () {
+        return _this2.values();
+      }, _ref.next = function next() {
+        var r = iterator.next();
+        /* istanbul ignore next */
+
+        if (r.done) return r;
+
+        var value = _this2.get(r.value);
+
+        return {
+          done: false,
+          value: value
+        };
+      }, _ref;
+    };
+
+    p.entries = function () {
+      var _this3 = this,
+          _ref2;
+
+      var iterator = this.keys();
+      return _ref2 = {}, _ref2[iteratorSymbol] = function () {
+        return _this3.entries();
+      }, _ref2.next = function next() {
+        var r = iterator.next();
+        /* istanbul ignore next */
+
+        if (r.done) return r;
+
+        var value = _this3.get(r.value);
+
+        return {
+          done: false,
+          value: [r.value, value]
+        };
+      }, _ref2;
+    };
+
+    p[iteratorSymbol] = function () {
+      return this.entries();
+    };
+
+    return DraftMap;
+  }(Map);
+
+  function proxyMap_(target, parent) {
+    // @ts-ignore
+    return new DraftMap(target, parent);
+  }
+
+  function prepareMapCopy(state) {
+    if (!state.copy_) {
+      state.assigned_ = new Map();
+      state.copy_ = new Map(state.base_);
+    }
+  }
+
+  var DraftSet = function (_super) {
+    __extends(DraftSet, _super); // Create class manually, cause #502
+
+
+    function DraftSet(target, parent) {
+      this[DRAFT_STATE] = {
+        type_: ProxyTypeSet,
+        parent_: parent,
+        scope_: parent ? parent.scope_ : getCurrentScope(),
+        modified_: false,
+        finalized_: false,
+        copy_: undefined,
+        base_: target,
+        draft_: this,
+        drafts_: new Map(),
+        revoked_: false,
+        isManual_: false
+      };
+      return this;
+    }
+
+    var p = DraftSet.prototype;
+    Object.defineProperty(p, "size", {
+      get: function get() {
+        return latest(this[DRAFT_STATE]).size;
+      } // enumerable: true,
+
+    });
+
+    p.has = function (value) {
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state); // bit of trickery here, to be able to recognize both the value, and the draft of its value
+
+      if (!state.copy_) {
+        return state.base_.has(value);
+      }
+
+      if (state.copy_.has(value)) return true;
+      if (state.drafts_.has(value) && state.copy_.has(state.drafts_.get(value))) return true;
+      return false;
+    };
+
+    p.add = function (value) {
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+
+      if (!this.has(value)) {
+        prepareSetCopy(state);
+        markChanged(state);
+        state.copy_.add(value);
+      }
+
+      return this;
+    };
+
+    p.delete = function (value) {
+      if (!this.has(value)) {
+        return false;
+      }
+
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      prepareSetCopy(state);
+      markChanged(state);
+      return state.copy_.delete(value) || (state.drafts_.has(value) ? state.copy_.delete(state.drafts_.get(value)) :
+      /* istanbul ignore next */
+      false);
+    };
+
+    p.clear = function () {
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+
+      if (latest(state).size) {
+        prepareSetCopy(state);
+        markChanged(state);
+        state.copy_.clear();
+      }
+    };
+
+    p.values = function () {
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      prepareSetCopy(state);
+      return state.copy_.values();
+    };
+
+    p.entries = function entries() {
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      prepareSetCopy(state);
+      return state.copy_.entries();
+    };
+
+    p.keys = function () {
+      return this.values();
+    };
+
+    p[iteratorSymbol] = function () {
+      return this.values();
+    };
+
+    p.forEach = function forEach(cb, thisArg) {
+      var iterator = this.values();
+      var result = iterator.next();
+
+      while (!result.done) {
+        cb.call(thisArg, result.value, result.value, this);
+        result = iterator.next();
+      }
+    };
+
+    return DraftSet;
+  }(Set);
+
+  function proxySet_(target, parent) {
+    // @ts-ignore
+    return new DraftSet(target, parent);
+  }
+
+  function prepareSetCopy(state) {
+    if (!state.copy_) {
+      // create drafts for all entries to preserve insertion order
+      state.copy_ = new Set();
+      state.base_.forEach(function (value) {
+        if (isDraftable(value)) {
+          var draft = createProxy(state.scope_.immer_, value, state);
+          state.drafts_.set(value, draft);
+          state.copy_.add(draft);
+        } else {
+          state.copy_.add(value);
+        }
+      });
+    }
+  }
+
+  function assertUnrevoked(state
+  /*ES5State | MapState | SetState*/
+  ) {
+    if (state.revoked_) die(3, JSON.stringify(latest(state)));
+  }
+
+  loadPlugin("MapSet", {
+    proxyMap_: proxyMap_,
+    proxySet_: proxySet_
+  });
+}
+
+function enableAllPlugins() {
+  enableES5();
+  enableMapSet();
+  enablePatches();
+}
+
+var immer =
+/*#__PURE__*/
+new Immer();
+/**
+ * The `produce` function takes a value and a "recipe function" (whose
+ * return value often depends on the base state). The recipe function is
+ * free to mutate its first argument however it wants. All mutations are
+ * only ever applied to a __copy__ of the base state.
+ *
+ * Pass only a function to create a "curried producer" which relieves you
+ * from passing the recipe function every time.
+ *
+ * Only plain objects and arrays are made mutable. All other objects are
+ * considered uncopyable.
+ *
+ * Note: This function is __bound__ to its `Immer` instance.
+ *
+ * @param {any} base - the initial state
+ * @param {Function} producer - function that receives a proxy of the base state as first argument and which can be freely modified
+ * @param {Function} patchListener - optional function that will be called with all the patches produced here
+ * @returns {any} a new state, or the initial state if nothing was modified
+ */
+
+var produce = immer.produce;
+/**
+ * Like `produce`, but `produceWithPatches` always returns a tuple
+ * [nextState, patches, inversePatches] (instead of just the next state)
+ */
+
+var produceWithPatches =
+/*#__PURE__*/
+immer.produceWithPatches.bind(immer);
+/**
+ * Pass true to automatically freeze all copies created by Immer.
+ *
+ * Always freeze by default, even in production mode
+ */
+
+var setAutoFreeze =
+/*#__PURE__*/
+immer.setAutoFreeze.bind(immer);
+/**
+ * Pass true to use the ES2015 `Proxy` class when creating drafts, which is
+ * always faster than using ES5 proxies.
+ *
+ * By default, feature detection is used, so calling this is rarely necessary.
+ */
+
+var setUseProxies =
+/*#__PURE__*/
+immer.setUseProxies.bind(immer);
+/**
+ * Apply an array of Immer patches to the first argument.
+ *
+ * This function is a producer, which means copy-on-write is in effect.
+ */
+
+var applyPatches =
+/*#__PURE__*/
+immer.applyPatches.bind(immer);
+/**
+ * Create an Immer draft from the given base state, which may be a draft itself.
+ * The draft can be modified until you finalize it with the `finishDraft` function.
+ */
+
+var createDraft =
+/*#__PURE__*/
+immer.createDraft.bind(immer);
+/**
+ * Finalize an Immer draft from a `createDraft` call, returning the base state
+ * (if no changes were made) or a modified copy. The draft must *not* be
+ * mutated afterwards.
+ *
+ * Pass a function as the 2nd argument to generate Immer patches based on the
+ * changes that were made.
+ */
+
+var finishDraft =
+/*#__PURE__*/
+immer.finishDraft.bind(immer);
+/**
+ * This function is actually a no-op, but can be used to cast an immutable type
+ * to an draft type and make TypeScript happy
+ *
+ * @param value
+ */
+
+function castDraft(value) {
+  return value;
+}
+/**
+ * This function is actually a no-op, but can be used to cast a mutable type
+ * to an immutable type and make TypeScript happy
+ * @param value
+ */
+
+function castImmutable(value) {
+  return value;
+}
+
+exports.Immer = Immer;
+exports.applyPatches = applyPatches;
+exports.castDraft = castDraft;
+exports.castImmutable = castImmutable;
+exports.createDraft = createDraft;
+exports.current = current;
+exports.default = produce;
+exports.enableAllPlugins = enableAllPlugins;
+exports.enableES5 = enableES5;
+exports.enableMapSet = enableMapSet;
+exports.enablePatches = enablePatches;
+exports.finishDraft = finishDraft;
+exports.freeze = freeze;
+exports.immerable = DRAFTABLE;
+exports.isDraft = isDraft;
+exports.isDraftable = isDraftable;
+exports.nothing = NOTHING;
+exports.original = original;
+exports.produce = produce;
+exports.produceWithPatches = produceWithPatches;
+exports.setAutoFreeze = setAutoFreeze;
+exports.setUseProxies = setUseProxies;
+
+
+},{}],11:[function(require,module,exports){
+function t(t){for(var n=arguments.length,r=Array(n>1?n-1:0),e=1;e<n;e++)r[e-1]=arguments[e];throw Error("[Immer] minified error nr: "+t+(r.length?" "+r.map((function(t){return"'"+t+"'"})).join(","):"")+". Find the full error at: https://bit.ly/3cXEKWf")}function n(t){return!!t&&!!t[H]}function r(t){return!!t&&(function(t){if(!t||"object"!=typeof t)return!1;var n=Object.getPrototypeOf(t);if(null===n)return!0;var r=Object.hasOwnProperty.call(n,"constructor")&&n.constructor;return r===Object||"function"==typeof r&&Function.toString.call(r)===Q}(t)||Array.isArray(t)||!!t[G]||!!t.constructor[G]||c(t)||v(t))}function e(t,n,r){void 0===r&&(r=!1),0===i(t)?(r?Object.keys:T)(t).forEach((function(e){r&&"symbol"==typeof e||n(e,t[e],t)})):t.forEach((function(r,e){return n(e,r,t)}))}function i(t){var n=t[H];return n?n.t>3?n.t-4:n.t:Array.isArray(t)?1:c(t)?2:v(t)?3:0}function u(t,n){return 2===i(t)?t.has(n):Object.prototype.hasOwnProperty.call(t,n)}function o(t,n){return 2===i(t)?t.get(n):t[n]}function f(t,n,r){var e=i(t);2===e?t.set(n,r):3===e?(t.delete(n),t.add(r)):t[n]=r}function a(t,n){return t===n?0!==t||1/t==1/n:t!=t&&n!=n}function c(t){return W&&t instanceof Map}function v(t){return X&&t instanceof Set}function s(t){return t.i||t.u}function p(t){if(Array.isArray(t))return Array.prototype.slice.call(t);var n=U(t);delete n[H];for(var r=T(n),e=0;e<r.length;e++){var i=r[e],u=n[i];!1===u.writable&&(u.writable=!0,u.configurable=!0),(u.get||u.set)&&(n[i]={configurable:!0,writable:!0,enumerable:u.enumerable,value:t[i]})}return Object.create(Object.getPrototypeOf(t),n)}function l(t,u){return void 0===u&&(u=!1),d(t)||n(t)||!r(t)?t:(i(t)>1&&(t.set=t.add=t.clear=t.delete=h),Object.freeze(t),u&&e(t,(function(t,n){return l(n,!0)}),!0),t)}function h(){t(2)}function d(t){return null==t||"object"!=typeof t||Object.isFrozen(t)}function y(n){var r=V[n];return r||t(18,n),r}function _(t,n){V[t]||(V[t]=n)}function b(){return J}function m(t,n){n&&(y("Patches"),t.o=[],t.v=[],t.s=n)}function j(t){O(t),t.p.forEach(w),t.p=null}function O(t){t===J&&(J=t.l)}function x(t){return J={p:[],l:J,h:t,_:!0,m:0}}function w(t){var n=t[H];0===n.t||1===n.t?n.j():n.O=!0}function S(n,e){e.m=e.p.length;var i=e.p[0],u=void 0!==n&&n!==i;return e.h.S||y("ES5").M(e,n,u),u?(i[H].P&&(j(e),t(4)),r(n)&&(n=M(e,n),e.l||g(e,n)),e.o&&y("Patches").g(i[H],n,e.o,e.v)):n=M(e,i,[]),j(e),e.o&&e.s(e.o,e.v),n!==B?n:void 0}function M(t,n,r){if(d(n))return n;var i=n[H];if(!i)return e(n,(function(e,u){return P(t,i,n,e,u,r)}),!0),n;if(i.A!==t)return n;if(!i.P)return g(t,i.u,!0),i.u;if(!i.R){i.R=!0,i.A.m--;var u=4===i.t||5===i.t?i.i=p(i.k):i.i;e(3===i.t?new Set(u):u,(function(n,e){return P(t,i,u,n,e,r)})),g(t,u,!1),r&&t.o&&y("Patches").F(i,r,t.o,t.v)}return i.i}function P(t,e,i,o,a,c){if(n(a)){var v=M(t,a,c&&e&&3!==e.t&&!u(e.D,o)?c.concat(o):void 0);if(f(i,o,v),!n(v))return;t._=!1}if(r(a)&&!d(a)){if(!t.h.K&&t.m<1)return;M(t,a),e&&e.A.l||g(t,a)}}function g(t,n,r){void 0===r&&(r=!1),t.h.K&&t._&&l(n,r)}function A(t,n){var r=t[H];return(r?s(r):t)[n]}function z(t,n){if(n in t)for(var r=Object.getPrototypeOf(t);r;){var e=Object.getOwnPropertyDescriptor(r,n);if(e)return e;r=Object.getPrototypeOf(r)}}function E(t){t.P||(t.P=!0,t.l&&E(t.l))}function R(t){t.i||(t.i=p(t.u))}function k(t,n,r){var e=c(n)?y("MapSet").$(n,r):v(n)?y("MapSet").C(n,r):t.S?function(t,n){var r=Array.isArray(t),e={t:r?1:0,A:n?n.A:b(),P:!1,R:!1,D:{},l:n,u:t,k:null,i:null,j:null,I:!1},i=e,u=Y;r&&(i=[e],u=Z);var o=Proxy.revocable(i,u),f=o.revoke,a=o.proxy;return e.k=a,e.j=f,a}(n,r):y("ES5").J(n,r);return(r?r.A:b()).p.push(e),e}function F(u){return n(u)||t(22,u),function t(n){if(!r(n))return n;var u,a=n[H],c=i(n);if(a){if(!a.P&&(a.t<4||!y("ES5").N(a)))return a.u;a.R=!0,u=D(n,c),a.R=!1}else u=D(n,c);return e(u,(function(n,r){a&&o(a.u,n)===r||f(u,n,t(r))})),3===c?new Set(u):u}(u)}function D(t,n){switch(n){case 2:return new Map(t);case 3:return Array.from(t)}return p(t)}function K(){function t(t,n){var r=f[t];return r?r.enumerable=n:f[t]=r={configurable:!0,enumerable:n,get:function(){return Y.get(this[H],t)},set:function(n){Y.set(this[H],t,n)}},r}function r(t){for(var n=t.length-1;n>=0;n--){var r=t[n][H];if(!r.P)switch(r.t){case 5:o(r)&&E(r);break;case 4:i(r)&&E(r)}}}function i(t){for(var n=t.u,r=t.k,e=T(r),i=e.length-1;i>=0;i--){var o=e[i];if(o!==H){var f=n[o];if(void 0===f&&!u(n,o))return!0;var c=r[o],v=c&&c[H];if(v?v.u!==f:!a(c,f))return!0}}var s=!!n[H];return e.length!==T(n).length+(s?0:1)}function o(t){var n=t.k;if(n.length!==t.u.length)return!0;var r=Object.getOwnPropertyDescriptor(n,n.length-1);return!(!r||r.get)}var f={};_("ES5",{J:function(n,r){var e=Array.isArray(n),i=function(n,r){if(n){for(var e=Array(r.length),i=0;i<r.length;i++)Object.defineProperty(e,""+i,t(i,!0));return e}var u=U(r);delete u[H];for(var o=T(u),f=0;f<o.length;f++){var a=o[f];u[a]=t(a,n||!!u[a].enumerable)}return Object.create(Object.getPrototypeOf(r),u)}(e,n),u={t:e?5:4,A:r?r.A:b(),P:!1,R:!1,D:{},l:r,u:n,k:i,i:null,O:!1,I:!1};return Object.defineProperty(i,H,{value:u,writable:!0}),i},M:function(t,i,f){f?n(i)&&i[H].A===t&&r(t.p):(t.o&&function t(n){if(n&&"object"==typeof n){var r=n[H];if(r){var i=r.u,f=r.k,a=r.D,c=r.t;if(4===c)e(f,(function(n){n!==H&&(void 0!==i[n]||u(i,n)?a[n]||t(f[n]):(a[n]=!0,E(r)))})),e(i,(function(t){void 0!==f[t]||u(f,t)||(a[t]=!1,E(r))}));else if(5===c){if(o(r)&&(E(r),a.length=!0),f.length<i.length)for(var v=f.length;v<i.length;v++)a[v]=!1;else for(var s=i.length;s<f.length;s++)a[s]=!0;for(var p=Math.min(f.length,i.length),l=0;l<p;l++)void 0===a[l]&&t(f[l])}}}}(t.p[0]),r(t.p))},N:function(t){return 4===t.t?i(t):o(t)}})}function $(){function f(t){if(!r(t))return t;if(Array.isArray(t))return t.map(f);if(c(t))return new Map(Array.from(t.entries()).map((function(t){return[t[0],f(t[1])]})));if(v(t))return new Set(Array.from(t).map(f));var n=Object.create(Object.getPrototypeOf(t));for(var e in t)n[e]=f(t[e]);return u(t,G)&&(n[G]=t[G]),n}function a(t){return n(t)?f(t):t}var s="add";_("Patches",{W:function(n,r){return r.forEach((function(r){for(var e=r.path,u=r.op,a=n,c=0;c<e.length-1;c++){var v=i(a),p=e[c];0!==v&&1!==v||"__proto__"!==p&&"constructor"!==p||t(24),"function"==typeof a&&"prototype"===p&&t(24),"object"!=typeof(a=o(a,p))&&t(15,e.join("/"))}var l=i(a),h=f(r.value),d=e[e.length-1];switch(u){case"replace":switch(l){case 2:return a.set(d,h);case 3:t(16);default:return a[d]=h}case s:switch(l){case 1:return a.splice(d,0,h);case 2:return a.set(d,h);case 3:return a.add(h);default:return a[d]=h}case"remove":switch(l){case 1:return a.splice(d,1);case 2:return a.delete(d);case 3:return a.delete(r.value);default:return delete a[d]}default:t(17,u)}})),n},F:function(t,n,r,i){switch(t.t){case 0:case 4:case 2:return function(t,n,r,i){var f=t.u,c=t.i;e(t.D,(function(t,e){var v=o(f,t),p=o(c,t),l=e?u(f,t)?"replace":s:"remove";if(v!==p||"replace"!==l){var h=n.concat(t);r.push("remove"===l?{op:l,path:h}:{op:l,path:h,value:p}),i.push(l===s?{op:"remove",path:h}:"remove"===l?{op:s,path:h,value:a(v)}:{op:"replace",path:h,value:a(v)})}}))}(t,n,r,i);case 5:case 1:return function(t,n,r,e){var i=t.u,u=t.D,o=t.i;if(o.length<i.length){var f=[o,i];i=f[0],o=f[1];var c=[e,r];r=c[0],e=c[1]}for(var v=0;v<i.length;v++)if(u[v]&&o[v]!==i[v]){var p=n.concat([v]);r.push({op:"replace",path:p,value:a(o[v])}),e.push({op:"replace",path:p,value:a(i[v])})}for(var l=i.length;l<o.length;l++){var h=n.concat([l]);r.push({op:s,path:h,value:a(o[l])})}i.length<o.length&&e.push({op:"replace",path:n.concat(["length"]),value:i.length})}(t,n,r,i);case 3:return function(t,n,r,e){var i=t.u,u=t.i,o=0;i.forEach((function(t){if(!u.has(t)){var i=n.concat([o]);r.push({op:"remove",path:i,value:t}),e.unshift({op:s,path:i,value:t})}o++})),o=0,u.forEach((function(t){if(!i.has(t)){var u=n.concat([o]);r.push({op:s,path:u,value:t}),e.unshift({op:"remove",path:u,value:t})}o++}))}(t,n,r,i)}},g:function(t,n,r,e){r.push({op:"replace",path:[],value:n}),e.push({op:"replace",path:[],value:t.u})}})}function C(){function n(t,n){function r(){this.constructor=t}f(t,n),t.prototype=(r.prototype=n.prototype,new r)}function i(t){t.i||(t.D=new Map,t.i=new Map(t.u))}function u(t){t.i||(t.i=new Set,t.u.forEach((function(n){if(r(n)){var e=k(t.A.h,n,t);t.p.set(n,e),t.i.add(e)}else t.i.add(n)})))}function o(n){n.O&&t(3,JSON.stringify(s(n)))}var f=function(t,n){return(f=Object.setPrototypeOf||{__proto__:[]}instanceof Array&&function(t,n){t.__proto__=n}||function(t,n){for(var r in n)n.hasOwnProperty(r)&&(t[r]=n[r])})(t,n)},a=function(){function t(t,n){return this[H]={t:2,l:n,A:n?n.A:b(),P:!1,R:!1,i:void 0,D:void 0,u:t,k:this,I:!1,O:!1},this}n(t,Map);var u=t.prototype;return Object.defineProperty(u,"size",{get:function(){return s(this[H]).size}}),u.has=function(t){return s(this[H]).has(t)},u.set=function(t,n){var r=this[H];return o(r),s(r).has(t)&&s(r).get(t)===n||(i(r),E(r),r.D.set(t,!0),r.i.set(t,n),r.D.set(t,!0)),this},u.delete=function(t){if(!this.has(t))return!1;var n=this[H];return o(n),i(n),E(n),n.D.set(t,!1),n.i.delete(t),!0},u.clear=function(){var t=this[H];o(t),s(t).size&&(i(t),E(t),t.D=new Map,e(t.u,(function(n){t.D.set(n,!1)})),t.i.clear())},u.forEach=function(t,n){var r=this;s(this[H]).forEach((function(e,i){t.call(n,r.get(i),i,r)}))},u.get=function(t){var n=this[H];o(n);var e=s(n).get(t);if(n.R||!r(e))return e;if(e!==n.u.get(t))return e;var u=k(n.A.h,e,n);return i(n),n.i.set(t,u),u},u.keys=function(){return s(this[H]).keys()},u.values=function(){var t,n=this,r=this.keys();return(t={})[L]=function(){return n.values()},t.next=function(){var t=r.next();return t.done?t:{done:!1,value:n.get(t.value)}},t},u.entries=function(){var t,n=this,r=this.keys();return(t={})[L]=function(){return n.entries()},t.next=function(){var t=r.next();if(t.done)return t;var e=n.get(t.value);return{done:!1,value:[t.value,e]}},t},u[L]=function(){return this.entries()},t}(),c=function(){function t(t,n){return this[H]={t:3,l:n,A:n?n.A:b(),P:!1,R:!1,i:void 0,u:t,k:this,p:new Map,O:!1,I:!1},this}n(t,Set);var r=t.prototype;return Object.defineProperty(r,"size",{get:function(){return s(this[H]).size}}),r.has=function(t){var n=this[H];return o(n),n.i?!!n.i.has(t)||!(!n.p.has(t)||!n.i.has(n.p.get(t))):n.u.has(t)},r.add=function(t){var n=this[H];return o(n),this.has(t)||(u(n),E(n),n.i.add(t)),this},r.delete=function(t){if(!this.has(t))return!1;var n=this[H];return o(n),u(n),E(n),n.i.delete(t)||!!n.p.has(t)&&n.i.delete(n.p.get(t))},r.clear=function(){var t=this[H];o(t),s(t).size&&(u(t),E(t),t.i.clear())},r.values=function(){var t=this[H];return o(t),u(t),t.i.values()},r.entries=function(){var t=this[H];return o(t),u(t),t.i.entries()},r.keys=function(){return this.values()},r[L]=function(){return this.values()},r.forEach=function(t,n){for(var r=this.values(),e=r.next();!e.done;)t.call(n,e.value,e.value,this),e=r.next()},t}();_("MapSet",{$:function(t,n){return new a(t,n)},C:function(t,n){return new c(t,n)}})}var I;Object.defineProperty(exports,"__esModule",{value:!0});var J,N="undefined"!=typeof Symbol&&"symbol"==typeof Symbol("x"),W="undefined"!=typeof Map,X="undefined"!=typeof Set,q="undefined"!=typeof Proxy&&void 0!==Proxy.revocable&&"undefined"!=typeof Reflect,B=N?Symbol.for("immer-nothing"):((I={})["immer-nothing"]=!0,I),G=N?Symbol.for("immer-draftable"):"__$immer_draftable",H=N?Symbol.for("immer-state"):"__$immer_state",L="undefined"!=typeof Symbol&&Symbol.iterator||"@@iterator",Q=""+Object.prototype.constructor,T="undefined"!=typeof Reflect&&Reflect.ownKeys?Reflect.ownKeys:void 0!==Object.getOwnPropertySymbols?function(t){return Object.getOwnPropertyNames(t).concat(Object.getOwnPropertySymbols(t))}:Object.getOwnPropertyNames,U=Object.getOwnPropertyDescriptors||function(t){var n={};return T(t).forEach((function(r){n[r]=Object.getOwnPropertyDescriptor(t,r)})),n},V={},Y={get:function(t,n){if(n===H)return t;var e=s(t);if(!u(e,n))return function(t,n,r){var e,i=z(n,r);return i?"value"in i?i.value:null===(e=i.get)||void 0===e?void 0:e.call(t.k):void 0}(t,e,n);var i=e[n];return t.R||!r(i)?i:i===A(t.u,n)?(R(t),t.i[n]=k(t.A.h,i,t)):i},has:function(t,n){return n in s(t)},ownKeys:function(t){return Reflect.ownKeys(s(t))},set:function(t,n,r){var e=z(s(t),n);if(null==e?void 0:e.set)return e.set.call(t.k,r),!0;if(!t.P){var i=A(s(t),n),o=null==i?void 0:i[H];if(o&&o.u===r)return t.i[n]=r,t.D[n]=!1,!0;if(a(r,i)&&(void 0!==r||u(t.u,n)))return!0;R(t),E(t)}return t.i[n]===r&&"number"!=typeof r||(t.i[n]=r,t.D[n]=!0,!0)},deleteProperty:function(t,n){return void 0!==A(t.u,n)||n in t.u?(t.D[n]=!1,R(t),E(t)):delete t.D[n],t.i&&delete t.i[n],!0},getOwnPropertyDescriptor:function(t,n){var r=s(t),e=Reflect.getOwnPropertyDescriptor(r,n);return e?{writable:!0,configurable:1!==t.t||"length"!==n,enumerable:e.enumerable,value:r[n]}:e},defineProperty:function(){t(11)},getPrototypeOf:function(t){return Object.getPrototypeOf(t.u)},setPrototypeOf:function(){t(12)}},Z={};e(Y,(function(t,n){Z[t]=function(){return arguments[0]=arguments[0][0],n.apply(this,arguments)}})),Z.deleteProperty=function(t,n){return Y.deleteProperty.call(this,t[0],n)},Z.set=function(t,n,r){return Y.set.call(this,t[0],n,r,t[0])};var tt=function(){function e(n){var e=this;this.S=q,this.K=!0,this.produce=function(n,i,u){if("function"==typeof n&&"function"!=typeof i){var o=i;i=n;var f=e;return function(t){var n=this;void 0===t&&(t=o);for(var r=arguments.length,e=Array(r>1?r-1:0),u=1;u<r;u++)e[u-1]=arguments[u];return f.produce(t,(function(t){var r;return(r=i).call.apply(r,[n,t].concat(e))}))}}var a;if("function"!=typeof i&&t(6),void 0!==u&&"function"!=typeof u&&t(7),r(n)){var c=x(e),v=k(e,n,void 0),s=!0;try{a=i(v),s=!1}finally{s?j(c):O(c)}return"undefined"!=typeof Promise&&a instanceof Promise?a.then((function(t){return m(c,u),S(t,c)}),(function(t){throw j(c),t})):(m(c,u),S(a,c))}if(!n||"object"!=typeof n){if((a=i(n))===B)return;return void 0===a&&(a=n),e.K&&l(a,!0),a}t(21,n)},this.produceWithPatches=function(t,n){return"function"==typeof t?function(n){for(var r=arguments.length,i=Array(r>1?r-1:0),u=1;u<r;u++)i[u-1]=arguments[u];return e.produceWithPatches(n,(function(n){return t.apply(void 0,[n].concat(i))}))}:[e.produce(t,n,(function(t,n){r=t,i=n})),r,i];var r,i},"boolean"==typeof(null==n?void 0:n.useProxies)&&this.setUseProxies(n.useProxies),"boolean"==typeof(null==n?void 0:n.autoFreeze)&&this.setAutoFreeze(n.autoFreeze)}var i=e.prototype;return i.createDraft=function(e){r(e)||t(8),n(e)&&(e=F(e));var i=x(this),u=k(this,e,void 0);return u[H].I=!0,O(i),u},i.finishDraft=function(t,n){var r=(t&&t[H]).A;return m(r,n),S(void 0,r)},i.setAutoFreeze=function(t){this.K=t},i.setUseProxies=function(n){n&&!q&&t(20),this.S=n},i.applyPatches=function(t,r){var e;for(e=r.length-1;e>=0;e--){var i=r[e];if(0===i.path.length&&"replace"===i.op){t=i.value;break}}var u=y("Patches").W;return n(t)?u(t,r):this.produce(t,(function(t){return u(t,r.slice(e+1))}))},e}(),nt=new tt,rt=nt.produce,et=nt.produceWithPatches.bind(nt),it=nt.setAutoFreeze.bind(nt),ut=nt.setUseProxies.bind(nt),ot=nt.applyPatches.bind(nt),ft=nt.createDraft.bind(nt),at=nt.finishDraft.bind(nt);exports.Immer=tt,exports.applyPatches=ot,exports.castDraft=function(t){return t},exports.castImmutable=function(t){return t},exports.createDraft=ft,exports.current=F,exports.default=rt,exports.enableAllPlugins=function(){K(),C(),$()},exports.enableES5=K,exports.enableMapSet=C,exports.enablePatches=$,exports.finishDraft=at,exports.freeze=l,exports.immerable=G,exports.isDraft=n,exports.isDraftable=r,exports.nothing=B,exports.original=function(r){return n(r)||t(23,r),r[H].u},exports.produce=rt,exports.produceWithPatches=et,exports.setAutoFreeze=it,exports.setUseProxies=ut;
+
+
+},{}],12:[function(require,module,exports){
+(function (process){(function (){
+
+'use strict'
+
+if (process.env.NODE_ENV === 'production') {
+  module.exports = require('./immer.cjs.production.min.js')
+} else {
+  module.exports = require('./immer.cjs.development.js')
+}
+
+}).call(this)}).call(this,require('_process'))
+},{"./immer.cjs.development.js":10,"./immer.cjs.production.min.js":11,"_process":29}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -992,7 +2956,7 @@ exports.FORMAT_PLAIN = FORMAT_PLAIN;
 var FORMATS = [FORMAT_HTML, FORMAT_PLAIN];
 exports.FORMATS = FORMATS;
 
-},{}],11:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1005,7 +2969,7 @@ var LINE_ENDINGS = {
 };
 exports.LINE_ENDINGS = LINE_ENDINGS;
 
-},{}],12:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1019,7 +2983,7 @@ var SUPPORTED_PLATFORMS = {
 };
 exports.SUPPORTED_PLATFORMS = SUPPORTED_PLATFORMS;
 
-},{}],13:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1029,7 +2993,7 @@ exports.WORDS = void 0;
 var WORDS = ["ad", "adipisicing", "aliqua", "aliquip", "amet", "anim", "aute", "cillum", "commodo", "consectetur", "consequat", "culpa", "cupidatat", "deserunt", "do", "dolor", "dolore", "duis", "ea", "eiusmod", "elit", "enim", "esse", "est", "et", "eu", "ex", "excepteur", "exercitation", "fugiat", "id", "in", "incididunt", "ipsum", "irure", "labore", "laboris", "laborum", "Lorem", "magna", "minim", "mollit", "nisi", "non", "nostrud", "nulla", "occaecat", "officia", "pariatur", "proident", "qui", "quis", "reprehenderit", "sint", "sit", "sunt", "tempor", "ullamco", "ut", "velit", "veniam", "voluptate"];
 exports.WORDS = WORDS;
 
-},{}],14:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1105,7 +3069,7 @@ var loremIpsum = function loremIpsum() {
 
 exports.loremIpsum = loremIpsum;
 
-},{"./constants/words":13,"./lib/LoremIpsum":15}],15:[function(require,module,exports){
+},{"./constants/words":16,"./lib/LoremIpsum":18}],18:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1211,7 +3175,7 @@ function () {
 var _default = LoremIpsum;
 exports.default = _default;
 
-},{"../constants/formats":10,"../constants/lineEndings":11,"../lib/generator":16,"../util":18}],16:[function(require,module,exports){
+},{"../constants/formats":13,"../constants/lineEndings":14,"../lib/generator":19,"../util":21}],19:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1327,7 +3291,7 @@ function () {
 var _default = Generator;
 exports.default = _default;
 
-},{"../constants/words":13,"../util":18}],17:[function(require,module,exports){
+},{"../constants/words":16,"../util":21}],20:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1347,7 +3311,7 @@ var capitalize = function capitalize(str) {
 var _default = capitalize;
 exports.default = _default;
 
-},{}],18:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1404,7 +3368,7 @@ var _makeArrayOfStrings = _interopRequireDefault(require("./makeArrayOfStrings")
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-},{"./capitalize":17,"./isNode":19,"./isReactNative":20,"./isWindows":21,"./makeArrayOfLength":22,"./makeArrayOfStrings":23}],19:[function(require,module,exports){
+},{"./capitalize":20,"./isNode":22,"./isReactNative":23,"./isWindows":24,"./makeArrayOfLength":25,"./makeArrayOfStrings":26}],22:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1422,7 +3386,7 @@ var isNode = function isNode() {
 var _default = isNode;
 exports.default = _default;
 
-},{}],20:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1440,7 +3404,7 @@ var isReactNative = function isReactNative() {
 var _default = isReactNative;
 exports.default = _default;
 
-},{}],21:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 (function (process){(function (){
 "use strict";
 
@@ -1462,7 +3426,7 @@ var _default = isWindows;
 exports.default = _default;
 
 }).call(this)}).call(this,require('_process'))
-},{"../constants/platforms":12,"_process":26}],22:[function(require,module,exports){
+},{"../constants/platforms":15,"_process":29}],25:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1484,7 +3448,7 @@ var makeArrayOfLength = function makeArrayOfLength() {
 var _default = makeArrayOfLength;
 exports.default = _default;
 
-},{}],23:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1508,10 +3472,10 @@ var makeArrayOfStrings = function makeArrayOfStrings(length, makeString) {
 var _default = makeArrayOfStrings;
 exports.default = _default;
 
-},{".":18}],24:[function(require,module,exports){
+},{".":21}],27:[function(require,module,exports){
 !function(t,n){"object"==typeof exports&&"object"==typeof module?module.exports=n():"function"==typeof define&&define.amd?define("Navigo",[],n):"object"==typeof exports?exports.Navigo=n():t.Navigo=n()}("undefined"!=typeof self?self:this,(function(){return(()=>{"use strict";var t={783:(t,n,e)=>{e.d(n,{default:()=>H});var o=/([:*])(\w+)/g,r=/\*/g,a=/\/\?/g;function i(t){return void 0===t&&(t="/"),d()?location.pathname+location.search+location.hash:t}function s(t){return t.replace(/\/+$/,"").replace(/^\/+/,"")}function c(t){return"string"==typeof t}function u(t){var n=s(t).split(/\?(.*)?$/);return[s(n[0]),n.slice(1).join("")]}function h(t){for(var n={},e=t.split("&"),o=0;o<e.length;o++){var r=e[o].split("=");if(""!==r[0]){var a=decodeURIComponent(r[0]);n[a]?(Array.isArray(n[a])||(n[a]=[n[a]]),n[a].push(decodeURIComponent(r[1]||""))):n[a]=decodeURIComponent(r[1]||"")}}return n}function f(t,n){var e,i=u(s(t)),f=i[0],l=i[1],p=""===l?null:h(l),d=[];if(c(n.path)){if(e="(?:/^|^)"+s(n.path).replace(o,(function(t,n,e){return d.push(e),"([^/]+)"})).replace(r,"?(?:.*)").replace(a,"/?([^/]+|)")+"$",""===s(n.path)&&""===s(f))return{url:f,queryString:l,route:n,data:null,params:p}}else e=n.path;var v=new RegExp(e,""),g=f.match(v);return!!g&&{url:f,queryString:l,route:n,data:c(n.path)?function(t,n){return 0===n.length?null:t?t.slice(1,t.length).reduce((function(t,e,o){return null===t&&(t={}),t[n[o]]=decodeURIComponent(e),t}),null):null}(g,d):g.slice(1),params:p}}function l(){return!("undefined"==typeof window||!window.history||!window.history.pushState)}function p(t,n){return void 0===t[n]||!0===t[n]}function d(){return"undefined"!=typeof window}function v(t,n){return void 0===t&&(t=[]),void 0===n&&(n={}),t.filter((function(t){return t})).forEach((function(t){["before","after","already","leave"].forEach((function(e){t[e]&&(n[e]||(n[e]=[]),n[e].push(t[e]))}))})),n}function g(t,n,e){var o=n||{},r=0;!function n(){t[r]?Array.isArray(t[r])?(t.splice.apply(t,[r,1].concat(t[r][0](o)?t[r][1]:t[r][2])),n()):t[r](o,(function(t){void 0===t||!0===t?(r+=1,n()):e&&e(o)})):e&&e(o)}()}function m(t,n){void 0===t.currentLocationPath&&(t.currentLocationPath=i(t.instance.root)),t.currentLocationPath=t.instance._checkForAHash(t.currentLocationPath),n()}function y(t,n){for(var e=0;e<t.instance.routes.length;e++){var o=t.instance.routes[e],r=f(t.currentLocationPath,o);if(r&&(t.matches||(t.matches=[]),t.matches.push(r),"ONE"===t.resolveOptions.strategy))return void n()}n()}function O(t,n){t.navigateOptions&&(void 0!==t.navigateOptions.shouldResolve&&console.warn('"shouldResolve" is deprecated. Please check the documentation.'),void 0!==t.navigateOptions.silent&&console.warn('"silent" is deprecated. Please check the documentation.')),n()}function k(t,n){!0===t.navigateOptions.force?(t.instance._setCurrent([t.instance._pathToMatchObject(t.to)]),n(!1)):n()}g.if=function(t,n,e){return Array.isArray(n)||(n=[n]),Array.isArray(e)||(e=[e]),[t,n,e]};var L=d(),b=l();function w(t,n){if(p(t.navigateOptions,"updateBrowserURL")){var e=("/"+t.to).replace(/\/\//g,"/"),o=L&&t.resolveOptions&&!0===t.resolveOptions.hash;b?(history[t.navigateOptions.historyAPIMethod||"pushState"](t.navigateOptions.stateObj||{},t.navigateOptions.title||"",o?"#"+e:e),location&&location.hash&&setTimeout((function(){var t=location.hash;location.hash="",location.hash=t}),1)):L&&(window.location.href=t.to)}n()}function P(t,n){var e=t.instance;e.lastResolved()?g(e.lastResolved().map((function(n){return function(e,o){if(n.route.hooks&&n.route.hooks.leave){var r=!1,a=t.instance.matchLocation(n.route.path,t.currentLocationPath);r="*"!==n.route.path?!a:!(t.matches&&t.matches.find((function(t){return n.route.path===t.route.path}))),p(t.navigateOptions,"callHooks")&&r?g(n.route.hooks.leave.map((function(n){return function(e,o){return n(o,t.matches&&t.matches.length>0?1===t.matches.length?t.matches[0]:t.matches:void 0)}})).concat([function(){return o()}])):o()}else o()}})),{},(function(){return n()})):n()}var A=[function(t,n){var e=t.instance.lastResolved();if(e&&e[0]&&e[0].route===t.match.route&&e[0].url===t.match.url&&e[0].queryString===t.match.queryString)return e.forEach((function(n){n.route.hooks&&n.route.hooks.already&&p(t.navigateOptions,"callHooks")&&n.route.hooks.already.forEach((function(n){return n(t.match)}))})),void n(!1);n()},function(t,n){t.match.route.hooks&&t.match.route.hooks.before&&p(t.navigateOptions,"callHooks")?g(t.match.route.hooks.before.map((function(n){return function(e,o){return n(o,t.match)}})).concat([function(){return n()}])):n()},function(t,n){p(t.navigateOptions,"callHandler")&&t.match.route.handler(t.match),t.instance.updatePageLinks(),n()},function(t,n){t.match.route.hooks&&t.match.route.hooks.after&&p(t.navigateOptions,"callHooks")&&t.match.route.hooks.after.forEach((function(n){return n(t.match)})),n()}],_=[P,function(t,n){var e=t.instance._notFoundRoute;if(e){t.notFoundHandled=!0;var o=u(t.currentLocationPath),r=o[0],a=o[1];e.path=s(r);var i={url:e.path,queryString:a,data:null,route:e,params:""!==a?h(a):null};t.matches=[i],t.match=i}n()},g.if((function(t){return t.notFoundHandled}),A,[function(t,n){t.resolveOptions&&!1!==t.resolveOptions.noMatchWarning&&void 0!==t.resolveOptions.noMatchWarning||console.warn('Navigo: "'+t.currentLocationPath+"\" didn't match any of the registered routes."),n()}]),function(t,n){t.instance._setCurrent(null),n()}];function R(){return(R=Object.assign||function(t){for(var n=1;n<arguments.length;n++){var e=arguments[n];for(var o in e)Object.prototype.hasOwnProperty.call(e,o)&&(t[o]=e[o])}return t}).apply(this,arguments)}function E(t,n){var e=0;P(t,(function o(){e!==t.matches.length?g(A,R({},t,{match:t.matches[e]}),(function(){e+=1,o()})):function(t,n){p(t.navigateOptions,"updateState")&&t.instance._setCurrent(t.matches),n()}(t,n)}))}function H(t,n){var e,o=n||{strategy:"ONE",hash:!1,noMatchWarning:!1},r=this,a="/",p=null,L=[],b=!1,P=l(),A=d();function R(t){return t.indexOf("#")>=0&&(t=!0===o.hash?t.split("#")[1]||"/":t.split("#")[0]),t}function H(t){return s(a+"/"+s(t))}function S(t,n,e,o){return t=c(t)?H(t):t,{name:o||s(String(t)),path:t,handler:n,hooks:v(e)}}function x(t,n){var e={instance:r,currentLocationPath:t?s(a)+"/"+s(t):void 0,navigateOptions:{},resolveOptions:n||o};return g([m,y,g.if((function(t){var n=t.matches;return n&&n.length>0}),E,_)],e),!!e.matches&&e.matches}function j(t,n){t=s(a)+"/"+s(t);var e={instance:r,to:t,navigateOptions:n||{},resolveOptions:n&&n.resolveOptions?n.resolveOptions:o,currentLocationPath:R(t)};g([O,k,y,g.if((function(t){var n=t.matches;return n&&n.length>0}),E,_),w],e)}function N(){if(A)return(A?[].slice.call(document.querySelectorAll("[data-navigo]")):[]).forEach((function(t){"false"!==t.getAttribute("data-navigo")&&"_blank"!==t.getAttribute("target")?t.hasListenerAttached||(t.hasListenerAttached=!0,t.navigoHandler=function(n){if((n.ctrlKey||n.metaKey)&&"a"===n.target.tagName.toLowerCase())return!1;var e=t.getAttribute("href");if(null==e)return!1;if(e.match(/^(http|https)/)&&"undefined"!=typeof URL)try{var o=new URL(e);e=o.pathname+o.search}catch(t){}var a=function(t){if(!t)return{};var n,e=t.split(","),o={};return e.forEach((function(t){var e=t.split(":").map((function(t){return t.replace(/(^ +| +$)/g,"")}));switch(e[0]){case"historyAPIMethod":o.historyAPIMethod=e[1];break;case"resolveOptionsStrategy":n||(n={}),n.strategy=e[1];break;case"resolveOptionsHash":n||(n={}),n.hash="true"===e[1];break;case"updateBrowserURL":case"callHandler":case"updateState":case"force":o[e[0]]="true"===e[1]}})),n&&(o.resolveOptions=n),o}(t.getAttribute("data-navigo-options"));b||(n.preventDefault(),n.stopPropagation(),r.navigate(s(e),a))},t.addEventListener("click",t.navigoHandler)):t.hasListenerAttached&&t.removeEventListener("click",t.navigoHandler)})),r}function C(t,n){var e=L.find((function(n){return n.name===t}));if(e){var o=e.path;if(n)for(var r in n)o=o.replace(":"+r,n[r]);return o.match(/^\//)?o:"/"+o}return null}function U(t){var n=u(s(t)),o=n[0],r=n[1],a=""===r?null:h(r);return{url:o,queryString:r,route:S(o,(function(){}),[e],o),data:null,params:a}}function q(t,n,e){return"string"==typeof n&&(n=F(n)),n?(n.hooks[t]||(n.hooks[t]=[]),n.hooks[t].push(e),function(){n.hooks[t]=n.hooks[t].filter((function(t){return t!==e}))}):(console.warn("Route doesn't exists: "+n),function(){})}function F(t){return"string"==typeof t?L.find((function(n){return n.name===H(t)})):L.find((function(n){return n.handler===t}))}t?a=s(t):console.warn('Navigo requires a root path in its constructor. If not provided will use "/" as default.'),this.root=a,this.routes=L,this.destroyed=b,this.current=p,this.on=function(t,n,o){var r=this;return"object"!=typeof t||t instanceof RegExp?("function"==typeof t&&(o=n,n=t,t=a),L.push(S(t,n,[e,o])),this):(Object.keys(t).forEach((function(n){if("function"==typeof t[n])r.on(n,t[n]);else{var o=t[n],a=o.uses,i=o.as,s=o.hooks;L.push(S(n,a,[e,s],i))}})),this)},this.off=function(t){return this.routes=L=L.filter((function(n){return c(t)?s(n.path)!==s(t):"function"==typeof t?t!==n.handler:String(n.path)!==String(t)})),this},this.resolve=x,this.navigate=j,this.navigateByName=function(t,n,e){var o=C(t,n);return null!==o&&(j(o,e),!0)},this.destroy=function(){this.routes=L=[],P&&window.removeEventListener("popstate",this.__popstateListener),this.destroyed=b=!0},this.notFound=function(t,n){return r._notFoundRoute=S("*",t,[e,n],"__NOT_FOUND__"),this},this.updatePageLinks=N,this.link=function(t){return"/"+a+"/"+s(t)},this.hooks=function(t){return e=t,this},this.extractGETParameters=function(t){return u(R(t))},this.lastResolved=function(){return p},this.generate=C,this.getLinkPath=function(t){return t.getAttribute("href")},this.match=function(t){var n={instance:r,currentLocationPath:t,navigateOptions:{},resolveOptions:o};return y(n,(function(){})),!!n.matches&&n.matches},this.matchLocation=function(t,n){var e={instance:r,currentLocationPath:n};return m(e,(function(){})),t=s(t),f(e.currentLocationPath,{name:t,path:t,handler:function(){},hooks:{}})||!1},this.getCurrentLocation=function(){return U(s(i(a)).replace(new RegExp("^"+a),""))},this.addBeforeHook=q.bind(this,"before"),this.addAfterHook=q.bind(this,"after"),this.addAlreadyHook=q.bind(this,"already"),this.addLeaveHook=q.bind(this,"leave"),this.getRoute=F,this._pathToMatchObject=U,this._clean=s,this._checkForAHash=R,this._setCurrent=function(t){return p=r.current=t},function(){P&&(this.__popstateListener=function(){x()},window.addEventListener("popstate",this.__popstateListener))}.call(this),N.call(this)}}},n={};function e(o){if(n[o])return n[o].exports;var r=n[o]={exports:{}};return t[o](r,r.exports,e),r.exports}return e.d=(t,n)=>{for(var o in n)e.o(n,o)&&!e.o(t,o)&&Object.defineProperty(t,o,{enumerable:!0,get:n[o]})},e.o=(t,n)=>Object.prototype.hasOwnProperty.call(t,n),e(783)})().default}));
 
-},{}],25:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 /*
 object-assign
 (c) Sindre Sorhus
@@ -1603,7 +3567,7 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],26:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -1789,7 +3753,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],27:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 
 var rafSchd = function rafSchd(fn) {
@@ -1827,7 +3791,7 @@ var rafSchd = function rafSchd(fn) {
 
 module.exports = rafSchd;
 
-},{}],28:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 (function (process){(function (){
 /** @license React v17.0.1
  * react-dom.development.js
@@ -28093,7 +30057,7 @@ exports.version = ReactVersion;
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":26,"object-assign":25,"react":36,"scheduler":42,"scheduler/tracing":43}],29:[function(require,module,exports){
+},{"_process":29,"object-assign":28,"react":39,"scheduler":45,"scheduler/tracing":46}],32:[function(require,module,exports){
 /** @license React v17.0.1
  * react-dom.production.min.js
  *
@@ -28392,7 +30356,7 @@ exports.findDOMNode=function(a){if(null==a)return null;if(1===a.nodeType)return 
 exports.render=function(a,b,c){if(!rk(b))throw Error(y(200));return tk(null,a,b,!1,c)};exports.unmountComponentAtNode=function(a){if(!rk(a))throw Error(y(40));return a._reactRootContainer?(Xj(function(){tk(null,null,a,!1,function(){a._reactRootContainer=null;a[ff]=null})}),!0):!1};exports.unstable_batchedUpdates=Wj;exports.unstable_createPortal=function(a,b){return uk(a,b,2<arguments.length&&void 0!==arguments[2]?arguments[2]:null)};
 exports.unstable_renderSubtreeIntoContainer=function(a,b,c,d){if(!rk(c))throw Error(y(200));if(null==a||void 0===a._reactInternals)throw Error(y(38));return tk(a,b,c,!1,d)};exports.version="17.0.1";
 
-},{"object-assign":25,"react":36,"scheduler":42}],30:[function(require,module,exports){
+},{"object-assign":28,"react":39,"scheduler":45}],33:[function(require,module,exports){
 (function (process){(function (){
 'use strict';
 
@@ -28434,7 +30398,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"./cjs/react-dom.development.js":28,"./cjs/react-dom.production.min.js":29,"_process":26}],31:[function(require,module,exports){
+},{"./cjs/react-dom.development.js":31,"./cjs/react-dom.production.min.js":32,"_process":29}],34:[function(require,module,exports){
 (function (process){(function (){
 /** @license React v16.13.1
  * react-is.development.js
@@ -28619,7 +30583,7 @@ exports.typeOf = typeOf;
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":26}],32:[function(require,module,exports){
+},{"_process":29}],35:[function(require,module,exports){
 /** @license React v16.13.1
  * react-is.production.min.js
  *
@@ -28636,7 +30600,7 @@ exports.Profiler=g;exports.StrictMode=f;exports.Suspense=p;exports.isAsyncMode=f
 exports.isMemo=function(a){return z(a)===r};exports.isPortal=function(a){return z(a)===d};exports.isProfiler=function(a){return z(a)===g};exports.isStrictMode=function(a){return z(a)===f};exports.isSuspense=function(a){return z(a)===p};
 exports.isValidElementType=function(a){return"string"===typeof a||"function"===typeof a||a===e||a===m||a===g||a===f||a===p||a===q||"object"===typeof a&&null!==a&&(a.$$typeof===t||a.$$typeof===r||a.$$typeof===h||a.$$typeof===k||a.$$typeof===n||a.$$typeof===w||a.$$typeof===x||a.$$typeof===y||a.$$typeof===v)};exports.typeOf=z;
 
-},{}],33:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 (function (process){(function (){
 'use strict';
 
@@ -28647,7 +30611,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"./cjs/react-is.development.js":31,"./cjs/react-is.production.min.js":32,"_process":26}],34:[function(require,module,exports){
+},{"./cjs/react-is.development.js":34,"./cjs/react-is.production.min.js":35,"_process":29}],37:[function(require,module,exports){
 (function (process){(function (){
 /** @license React v17.0.1
  * react.development.js
@@ -30984,7 +32948,7 @@ exports.version = ReactVersion;
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":26,"object-assign":25}],35:[function(require,module,exports){
+},{"_process":29,"object-assign":28}],38:[function(require,module,exports){
 /** @license React v17.0.1
  * react.production.min.js
  *
@@ -31009,7 +32973,7 @@ key:d,ref:k,props:e,_owner:h}};exports.createContext=function(a,b){void 0===b&&(
 exports.lazy=function(a){return{$$typeof:v,_payload:{_status:-1,_result:a},_init:Q}};exports.memo=function(a,b){return{$$typeof:u,type:a,compare:void 0===b?null:b}};exports.useCallback=function(a,b){return S().useCallback(a,b)};exports.useContext=function(a,b){return S().useContext(a,b)};exports.useDebugValue=function(){};exports.useEffect=function(a,b){return S().useEffect(a,b)};exports.useImperativeHandle=function(a,b,c){return S().useImperativeHandle(a,b,c)};
 exports.useLayoutEffect=function(a,b){return S().useLayoutEffect(a,b)};exports.useMemo=function(a,b){return S().useMemo(a,b)};exports.useReducer=function(a,b,c){return S().useReducer(a,b,c)};exports.useRef=function(a){return S().useRef(a)};exports.useState=function(a){return S().useState(a)};exports.version="17.0.1";
 
-},{"object-assign":25}],36:[function(require,module,exports){
+},{"object-assign":28}],39:[function(require,module,exports){
 (function (process){(function (){
 'use strict';
 
@@ -31020,7 +32984,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"./cjs/react.development.js":34,"./cjs/react.production.min.js":35,"_process":26}],37:[function(require,module,exports){
+},{"./cjs/react.development.js":37,"./cjs/react.production.min.js":38,"_process":29}],40:[function(require,module,exports){
 (function (global){(function (){
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
@@ -31960,7 +33924,7 @@ if (process.env.NODE_ENV === 'production') {
 })));
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],38:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 (function (process){(function (){
 /** @license React v0.20.1
  * scheduler-tracing.development.js
@@ -32311,7 +34275,7 @@ exports.unstable_wrap = unstable_wrap;
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":26}],39:[function(require,module,exports){
+},{"_process":29}],42:[function(require,module,exports){
 /** @license React v0.20.1
  * scheduler-tracing.production.min.js
  *
@@ -32322,7 +34286,7 @@ exports.unstable_wrap = unstable_wrap;
  */
 'use strict';var b=0;exports.__interactionsRef=null;exports.__subscriberRef=null;exports.unstable_clear=function(a){return a()};exports.unstable_getCurrent=function(){return null};exports.unstable_getThreadID=function(){return++b};exports.unstable_subscribe=function(){};exports.unstable_trace=function(a,d,c){return c()};exports.unstable_unsubscribe=function(){};exports.unstable_wrap=function(a){return a};
 
-},{}],40:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 (function (process){(function (){
 /** @license React v0.20.1
  * scheduler.development.js
@@ -33170,7 +35134,7 @@ exports.unstable_wrapCallback = unstable_wrapCallback;
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":26}],41:[function(require,module,exports){
+},{"_process":29}],44:[function(require,module,exports){
 /** @license React v0.20.1
  * scheduler.production.min.js
  *
@@ -33192,7 +35156,7 @@ exports.unstable_next=function(a){switch(P){case 1:case 2:case 3:var b=3;break;d
 exports.unstable_scheduleCallback=function(a,b,c){var d=exports.unstable_now();"object"===typeof c&&null!==c?(c=c.delay,c="number"===typeof c&&0<c?d+c:d):c=d;switch(a){case 1:var e=-1;break;case 2:e=250;break;case 5:e=1073741823;break;case 4:e=1E4;break;default:e=5E3}e=c+e;a={id:N++,callback:b,priorityLevel:a,startTime:c,expirationTime:e,sortIndex:-1};c>d?(a.sortIndex=c,H(M,a),null===J(L)&&a===J(M)&&(S?h():S=!0,g(U,c-d))):(a.sortIndex=e,H(L,a),R||Q||(R=!0,f(V)));return a};
 exports.unstable_wrapCallback=function(a){var b=P;return function(){var c=P;P=b;try{return a.apply(this,arguments)}finally{P=c}}};
 
-},{}],42:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 (function (process){(function (){
 'use strict';
 
@@ -33203,7 +35167,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"./cjs/scheduler.development.js":40,"./cjs/scheduler.production.min.js":41,"_process":26}],43:[function(require,module,exports){
+},{"./cjs/scheduler.development.js":43,"./cjs/scheduler.production.min.js":44,"_process":29}],46:[function(require,module,exports){
 (function (process){(function (){
 'use strict';
 
@@ -33214,7 +35178,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 }).call(this)}).call(this,require('_process'))
-},{"./cjs/scheduler-tracing.development.js":38,"./cjs/scheduler-tracing.production.min.js":39,"_process":26}],44:[function(require,module,exports){
+},{"./cjs/scheduler-tracing.development.js":41,"./cjs/scheduler-tracing.production.min.js":42,"_process":29}],47:[function(require,module,exports){
 //
 
 module.exports = function shallowEqual(objA, objB, compare, compareContext) {
@@ -33262,13 +35226,13 @@ module.exports = function shallowEqual(objA, objB, compare, compareContext) {
   return true;
 };
 
-},{}],45:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 (function (process){(function (){
 "use strict";function e(e){return e&&"object"==typeof e&&"default"in e?e.default:e}Object.defineProperty(exports,"__esModule",{value:!0});var t=require("react-is"),n=require("react"),r=e(n),o=e(require("shallowequal")),s=e(require("@emotion/stylis")),i=e(require("@emotion/unitless")),a=e(require("@emotion/is-prop-valid")),u=e(require("hoist-non-react-statics"));function c(){return(c=Object.assign||function(e){for(var t=1;t<arguments.length;t++){var n=arguments[t];for(var r in n)Object.prototype.hasOwnProperty.call(n,r)&&(e[r]=n[r])}return e}).apply(this,arguments)}var l=function(e,t){for(var n=[e[0]],r=0,o=t.length;r<o;r+=1)n.push(t[r],e[r+1]);return n},d=function(e){return null!==e&&"object"==typeof e&&"[object Object]"===(e.toString?e.toString():Object.prototype.toString.call(e))&&!t.typeOf(e)},h=Object.freeze([]),p=Object.freeze({});function f(e){return"function"==typeof e}function m(e){return"production"!==process.env.NODE_ENV&&"string"==typeof e&&e||e.displayName||e.name||"Component"}function y(e){return e&&"string"==typeof e.styledComponentId}var v="undefined"!=typeof process&&(process.env.REACT_APP_SC_ATTR||process.env.SC_ATTR)||"data-styled",g="undefined"!=typeof window&&"HTMLElement"in window,S=Boolean("boolean"==typeof SC_DISABLE_SPEEDY?SC_DISABLE_SPEEDY:"undefined"!=typeof process&&void 0!==process.env.REACT_APP_SC_DISABLE_SPEEDY&&""!==process.env.REACT_APP_SC_DISABLE_SPEEDY?"false"!==process.env.REACT_APP_SC_DISABLE_SPEEDY&&process.env.REACT_APP_SC_DISABLE_SPEEDY:"undefined"!=typeof process&&void 0!==process.env.SC_DISABLE_SPEEDY&&""!==process.env.SC_DISABLE_SPEEDY?"false"!==process.env.SC_DISABLE_SPEEDY&&process.env.SC_DISABLE_SPEEDY:"production"!==process.env.NODE_ENV),w={},E="production"!==process.env.NODE_ENV?{1:"Cannot create styled-component for component: %s.\n\n",2:"Can't collect styles once you've consumed a `ServerStyleSheet`'s styles! `ServerStyleSheet` is a one off instance for each server-side render cycle.\n\n- Are you trying to reuse it across renders?\n- Are you accidentally calling collectStyles twice?\n\n",3:"Streaming SSR is only supported in a Node.js environment; Please do not try to call this method in the browser.\n\n",4:"The `StyleSheetManager` expects a valid target or sheet prop!\n\n- Does this error occur on the client and is your target falsy?\n- Does this error occur on the server and is the sheet falsy?\n\n",5:"The clone method cannot be used on the client!\n\n- Are you running in a client-like environment on the server?\n- Are you trying to run SSR on the client?\n\n",6:"Trying to insert a new style tag, but the given Node is unmounted!\n\n- Are you using a custom target that isn't mounted?\n- Does your document not have a valid head element?\n- Have you accidentally removed a style tag manually?\n\n",7:'ThemeProvider: Please return an object from your "theme" prop function, e.g.\n\n```js\ntheme={() => ({})}\n```\n\n',8:'ThemeProvider: Please make your "theme" prop an object.\n\n',9:"Missing document `<head>`\n\n",10:"Cannot find a StyleSheet instance. Usually this happens if there are multiple copies of styled-components loaded at once. Check out this issue for how to troubleshoot and fix the common cases where this situation can happen: https://github.com/styled-components/styled-components/issues/1941#issuecomment-417862021\n\n",11:"_This error was replaced with a dev-time warning, it will be deleted for v4 final._ [createGlobalStyle] received children which will not be rendered. Please use the component without passing children elements.\n\n",12:"It seems you are interpolating a keyframe declaration (%s) into an untagged string. This was supported in styled-components v3, but is not longer supported in v4 as keyframes are now injected on-demand. Please wrap your string in the css\\`\\` helper which ensures the styles are injected correctly. See https://www.styled-components.com/docs/api#css\n\n",13:"%s is not a styled component and cannot be referred to via component selector. See https://www.styled-components.com/docs/advanced#referring-to-other-components for more details.\n\n",14:'ThemeProvider: "theme" prop is required.\n\n',15:"A stylis plugin has been supplied that is not named. We need a name for each plugin to be able to prevent styling collisions between different stylis configurations within the same app. Before you pass your plugin to `<StyleSheetManager stylisPlugins={[]}>`, please make sure each plugin is uniquely-named, e.g.\n\n```js\nObject.defineProperty(importedPlugin, 'name', { value: 'some-unique-name' });\n```\n\n",16:"Reached the limit of how many styled components may be created at group %s.\nYou may only create up to 1,073,741,824 components. If you're creating components dynamically,\nas for instance in your render method then you may be running into this limitation.\n\n",17:"CSSStyleSheet could not be found on HTMLStyleElement.\nHas styled-components' style tag been unmounted or altered by another script?\n"}:{};function b(){for(var e=arguments.length<=0?void 0:arguments[0],t=[],n=1,r=arguments.length;n<r;n+=1)t.push(n<0||arguments.length<=n?void 0:arguments[n]);return t.forEach((function(t){e=e.replace(/%[a-z]/,t)})),e}function _(e){for(var t=arguments.length,n=new Array(t>1?t-1:0),r=1;r<t;r++)n[r-1]=arguments[r];throw"production"===process.env.NODE_ENV?new Error("An error occurred. See https://git.io/JUIaE#"+e+" for more information."+(n.length>0?" Args: "+n.join(", "):"")):new Error(b.apply(void 0,[E[e]].concat(n)).trim())}var N=function(){function e(e){this.groupSizes=new Uint32Array(512),this.length=512,this.tag=e}var t=e.prototype;return t.indexOfGroup=function(e){for(var t=0,n=0;n<e;n++)t+=this.groupSizes[n];return t},t.insertRules=function(e,t){if(e>=this.groupSizes.length){for(var n=this.groupSizes,r=n.length,o=r;e>=o;)(o<<=1)<0&&_(16,""+e);this.groupSizes=new Uint32Array(o),this.groupSizes.set(n),this.length=o;for(var s=r;s<o;s++)this.groupSizes[s]=0}for(var i=this.indexOfGroup(e+1),a=0,u=t.length;a<u;a++)this.tag.insertRule(i,t[a])&&(this.groupSizes[e]++,i++)},t.clearGroup=function(e){if(e<this.length){var t=this.groupSizes[e],n=this.indexOfGroup(e),r=n+t;this.groupSizes[e]=0;for(var o=n;o<r;o++)this.tag.deleteRule(n)}},t.getGroup=function(e){var t="";if(e>=this.length||0===this.groupSizes[e])return t;for(var n=this.groupSizes[e],r=this.indexOfGroup(e),o=r+n,s=r;s<o;s++)t+=this.tag.getRule(s)+"/*!sc*/\n";return t},e}(),C=new Map,A=new Map,I=1,P=function(e){if(C.has(e))return C.get(e);for(;A.has(I);)I++;var t=I++;return"production"!==process.env.NODE_ENV&&((0|t)<0||t>1<<30)&&_(16,""+t),C.set(e,t),A.set(t,e),t},O=function(e){return A.get(e)},x=function(e,t){C.set(e,t),A.set(t,e)},R="style["+v+'][data-styled-version="5.2.1"]',D=new RegExp("^"+v+'\\.g(\\d+)\\[id="([\\w\\d-]+)"\\].*?"([^"]*)'),T=function(e,t,n){for(var r,o=n.split(","),s=0,i=o.length;s<i;s++)(r=o[s])&&e.registerName(t,r)},j=function(e,t){for(var n=t.innerHTML.split("/*!sc*/\n"),r=[],o=0,s=n.length;o<s;o++){var i=n[o].trim();if(i){var a=i.match(D);if(a){var u=0|parseInt(a[1],10),c=a[2];0!==u&&(x(c,u),T(e,c,a[3]),e.getTag().insertRules(u,r)),r.length=0}else r.push(i)}}},k=function(){return"undefined"!=typeof __webpack_nonce__?__webpack_nonce__:null},V=function(e){var t=document.head,n=e||t,r=document.createElement("style"),o=function(e){for(var t=e.childNodes,n=t.length;n>=0;n--){var r=t[n];if(r&&1===r.nodeType&&r.hasAttribute(v))return r}}(n),s=void 0!==o?o.nextSibling:null;r.setAttribute(v,"active"),r.setAttribute("data-styled-version","5.2.1");var i=k();return i&&r.setAttribute("nonce",i),n.insertBefore(r,s),r},M=function(){function e(e){var t=this.element=V(e);t.appendChild(document.createTextNode("")),this.sheet=function(e){if(e.sheet)return e.sheet;for(var t=document.styleSheets,n=0,r=t.length;n<r;n++){var o=t[n];if(o.ownerNode===e)return o}_(17)}(t),this.length=0}var t=e.prototype;return t.insertRule=function(e,t){try{return this.sheet.insertRule(t,e),this.length++,!0}catch(e){return!1}},t.deleteRule=function(e){this.sheet.deleteRule(e),this.length--},t.getRule=function(e){var t=this.sheet.cssRules[e];return void 0!==t&&"string"==typeof t.cssText?t.cssText:""},e}(),B=function(){function e(e){var t=this.element=V(e);this.nodes=t.childNodes,this.length=0}var t=e.prototype;return t.insertRule=function(e,t){if(e<=this.length&&e>=0){var n=document.createTextNode(t),r=this.nodes[e];return this.element.insertBefore(n,r||null),this.length++,!0}return!1},t.deleteRule=function(e){this.element.removeChild(this.nodes[e]),this.length--},t.getRule=function(e){return e<this.length?this.nodes[e].textContent:""},e}(),z=function(){function e(e){this.rules=[],this.length=0}var t=e.prototype;return t.insertRule=function(e,t){return e<=this.length&&(this.rules.splice(e,0,t),this.length++,!0)},t.deleteRule=function(e){this.rules.splice(e,1),this.length--},t.getRule=function(e){return e<this.length?this.rules[e]:""},e}(),L=g,q={isServer:!g,useCSSOMInjection:!S},G=function(){function e(e,t,n){void 0===e&&(e=p),void 0===t&&(t={}),this.options=c({},q,{},e),this.gs=t,this.names=new Map(n),!this.options.isServer&&g&&L&&(L=!1,function(e){for(var t=document.querySelectorAll(R),n=0,r=t.length;n<r;n++){var o=t[n];o&&"active"!==o.getAttribute(v)&&(j(e,o),o.parentNode&&o.parentNode.removeChild(o))}}(this))}e.registerId=function(e){return P(e)};var t=e.prototype;return t.reconstructWithOptions=function(t,n){return void 0===n&&(n=!0),new e(c({},this.options,{},t),this.gs,n&&this.names||void 0)},t.allocateGSInstance=function(e){return this.gs[e]=(this.gs[e]||0)+1},t.getTag=function(){return this.tag||(this.tag=(n=(t=this.options).isServer,r=t.useCSSOMInjection,o=t.target,e=n?new z(o):r?new M(o):new B(o),new N(e)));var e,t,n,r,o},t.hasNameForId=function(e,t){return this.names.has(e)&&this.names.get(e).has(t)},t.registerName=function(e,t){if(P(e),this.names.has(e))this.names.get(e).add(t);else{var n=new Set;n.add(t),this.names.set(e,n)}},t.insertRules=function(e,t,n){this.registerName(e,t),this.getTag().insertRules(P(e),n)},t.clearNames=function(e){this.names.has(e)&&this.names.get(e).clear()},t.clearRules=function(e){this.getTag().clearGroup(P(e)),this.clearNames(e)},t.clearTag=function(){this.tag=void 0},t.toString=function(){return function(e){for(var t=e.getTag(),n=t.length,r="",o=0;o<n;o++){var s=O(o);if(void 0!==s){var i=e.names.get(s),a=t.getGroup(o);if(void 0!==i&&0!==a.length){var u=v+".g"+o+'[id="'+s+'"]',c="";void 0!==i&&i.forEach((function(e){e.length>0&&(c+=e+",")})),r+=""+a+u+'{content:"'+c+'"}/*!sc*/\n'}}}return r}(this)},e}(),F=/(a)(d)/gi,Y=function(e){return String.fromCharCode(e+(e>25?39:97))};function H(e){var t,n="";for(t=Math.abs(e);t>52;t=t/52|0)n=Y(t%52)+n;return(Y(t%52)+n).replace(F,"$1-$2")}var $=function(e,t){for(var n=t.length;n;)e=33*e^t.charCodeAt(--n);return e},W=function(e){return $(5381,e)};function U(e){for(var t=0;t<e.length;t+=1){var n=e[t];if(f(n)&&!y(n))return!1}return!0}var J=W("5.2.1"),X=function(){function e(e,t,n){this.rules=e,this.staticRulesId="",this.isStatic="production"===process.env.NODE_ENV&&(void 0===n||n.isStatic)&&U(e),this.componentId=t,this.baseHash=$(J,t),this.baseStyle=n,G.registerId(t)}return e.prototype.generateAndInjectStyles=function(e,t,n){var r=this.componentId,o=[];if(this.baseStyle&&o.push(this.baseStyle.generateAndInjectStyles(e,t,n)),this.isStatic&&!n.hash)if(this.staticRulesId&&t.hasNameForId(r,this.staticRulesId))o.push(this.staticRulesId);else{var s=me(this.rules,e,t,n).join(""),i=H($(this.baseHash,s.length)>>>0);if(!t.hasNameForId(r,i)){var a=n(s,"."+i,void 0,r);t.insertRules(r,i,a)}o.push(i),this.staticRulesId=i}else{for(var u=this.rules.length,c=$(this.baseHash,n.hash),l="",d=0;d<u;d++){var h=this.rules[d];if("string"==typeof h)l+=h,"production"!==process.env.NODE_ENV&&(c=$(c,h+d));else if(h){var p=me(h,e,t,n),f=Array.isArray(p)?p.join(""):p;c=$(c,f+d),l+=f}}if(l){var m=H(c>>>0);if(!t.hasNameForId(r,m)){var y=n(l,"."+m,void 0,r);t.insertRules(r,m,y)}o.push(m)}}return o.join(" ")},e}(),Z=/^\s*\/\/.*$/gm,K=[":","[",".","#"];function Q(e){var t,n,r,o,i=void 0===e?p:e,a=i.options,u=void 0===a?p:a,c=i.plugins,l=void 0===c?h:c,d=new s(u),f=[],m=function(e){function t(t){if(t)try{e(t+"}")}catch(e){}}return function(n,r,o,s,i,a,u,c,l,d){switch(n){case 1:if(0===l&&64===r.charCodeAt(0))return e(r+";"),"";break;case 2:if(0===c)return r+"/*|*/";break;case 3:switch(c){case 102:case 112:return e(o[0]+r),"";default:return r+(0===d?"/*|*/":"")}case-2:r.split("/*|*/}").forEach(t)}}}((function(e){f.push(e)})),y=function(e,r,s){return 0===r&&K.includes(s[n.length])||s.match(o)?e:"."+t};function v(e,s,i,a){void 0===a&&(a="&");var u=e.replace(Z,""),c=s&&i?i+" "+s+" { "+u+" }":u;return t=a,n=s,r=new RegExp("\\"+n+"\\b","g"),o=new RegExp("(\\"+n+"\\b){2,}"),d(i||!s?"":s,c)}return d.use([].concat(l,[function(e,t,o){2===e&&o.length&&o[0].lastIndexOf(n)>0&&(o[0]=o[0].replace(r,y))},m,function(e){if(-2===e){var t=f;return f=[],t}}])),v.hash=l.length?l.reduce((function(e,t){return t.name||_(15),$(e,t.name)}),5381).toString():"",v}var ee=r.createContext(),te=ee.Consumer,ne=r.createContext(),re=(ne.Consumer,new G),oe=Q();function se(){return n.useContext(ee)||re}function ie(){return n.useContext(ne)||oe}function ae(e){var t=n.useState(e.stylisPlugins),s=t[0],i=t[1],a=se(),u=n.useMemo((function(){var t=a;return e.sheet?t=e.sheet:e.target&&(t=t.reconstructWithOptions({target:e.target},!1)),e.disableCSSOMInjection&&(t=t.reconstructWithOptions({useCSSOMInjection:!1})),t}),[e.disableCSSOMInjection,e.sheet,e.target]),c=n.useMemo((function(){return Q({options:{prefix:!e.disableVendorPrefixes},plugins:s})}),[e.disableVendorPrefixes,s]);return n.useEffect((function(){o(s,e.stylisPlugins)||i(e.stylisPlugins)}),[e.stylisPlugins]),r.createElement(ee.Provider,{value:u},r.createElement(ne.Provider,{value:c},"production"!==process.env.NODE_ENV?r.Children.only(e.children):e.children))}var ue=function(){function e(e,t){var n=this;this.inject=function(e,t){void 0===t&&(t=oe);var r=n.name+t.hash;e.hasNameForId(n.id,r)||e.insertRules(n.id,r,t(n.rules,r,"@keyframes"))},this.toString=function(){return _(12,String(n.name))},this.name=e,this.id="sc-keyframes-"+e,this.rules=t}return e.prototype.getName=function(e){return void 0===e&&(e=oe),this.name+e.hash},e}(),ce=/([A-Z])/,le=/([A-Z])/g,de=/^ms-/,he=function(e){return"-"+e.toLowerCase()};function pe(e){return ce.test(e)?e.replace(le,he).replace(de,"-ms-"):e}var fe=function(e){return null==e||!1===e||""===e};function me(e,n,r,o){if(Array.isArray(e)){for(var s,a=[],u=0,c=e.length;u<c;u+=1)""!==(s=me(e[u],n,r,o))&&(Array.isArray(s)?a.push.apply(a,s):a.push(s));return a}if(fe(e))return"";if(y(e))return"."+e.styledComponentId;if(f(e)){if("function"!=typeof(h=e)||h.prototype&&h.prototype.isReactComponent||!n)return e;var l=e(n);return"production"!==process.env.NODE_ENV&&t.isElement(l)&&console.warn(m(e)+" is not a styled component and cannot be referred to via component selector. See https://www.styled-components.com/docs/advanced#referring-to-other-components for more details."),me(l,n,r,o)}var h;return e instanceof ue?r?(e.inject(r,o),e.getName(o)):e:d(e)?function e(t,n){var r,o,s=[];for(var a in t)t.hasOwnProperty(a)&&!fe(t[a])&&(d(t[a])?s.push.apply(s,e(t[a],a)):f(t[a])?s.push(pe(a)+":",t[a],";"):s.push(pe(a)+": "+(r=a,null==(o=t[a])||"boolean"==typeof o||""===o?"":"number"!=typeof o||0===o||r in i?String(o).trim():o+"px")+";"));return n?[n+" {"].concat(s,["}"]):s}(e):e.toString()}function ye(e){for(var t=arguments.length,n=new Array(t>1?t-1:0),r=1;r<t;r++)n[r-1]=arguments[r];return f(e)||d(e)?me(l(h,[e].concat(n))):0===n.length&&1===e.length&&"string"==typeof e[0]?e:me(l(e,n))}var ve=/invalid hook call/i,ge=new Set,Se=function(e,t){if("production"!==process.env.NODE_ENV){var r="The component "+e+(t?' with the id of "'+t+'"':"")+" has been created dynamically.\nYou may see this warning because you've called styled inside another component.\nTo resolve this only create new StyledComponents outside of any render method and function component.";try{n.useRef(),ge.has(r)||(console.warn(r),ge.add(r))}catch(e){ve.test(e.message)&&ge.delete(r)}}},we=function(e,t,n){return void 0===n&&(n=p),e.theme!==n.theme&&e.theme||t||n.theme},Ee=/[!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~-]+/g,be=/(^-|-$)/g;function _e(e){return e.replace(Ee,"-").replace(be,"")}var Ne=function(e){return H(W(e)>>>0)};function Ce(e){return"string"==typeof e&&("production"===process.env.NODE_ENV||e.charAt(0)===e.charAt(0).toLowerCase())}var Ae=function(e){return"function"==typeof e||"object"==typeof e&&null!==e&&!Array.isArray(e)},Ie=function(e){return"__proto__"!==e&&"constructor"!==e&&"prototype"!==e};function Pe(e,t,n){var r=e[n];Ae(t)&&Ae(r)?Oe(r,t):e[n]=t}function Oe(e){for(var t=arguments.length,n=new Array(t>1?t-1:0),r=1;r<t;r++)n[r-1]=arguments[r];for(var o=0,s=n;o<s.length;o++){var i=s[o];if(Ae(i))for(var a in i)Ie(a)&&Pe(e,i[a],a)}return e}var xe=r.createContext(),Re=xe.Consumer,De={};function Te(e,t,o){var s=y(e),i=!Ce(e),l=t.attrs,d=void 0===l?h:l,v=t.componentId,g=void 0===v?function(e,t){var n="string"!=typeof e?"sc":_e(e);De[n]=(De[n]||0)+1;var r=n+"-"+Ne("5.2.1"+n+De[n]);return t?t+"-"+r:r}(t.displayName,t.parentComponentId):v,S=t.displayName,w=void 0===S?function(e){return Ce(e)?"styled."+e:"Styled("+m(e)+")"}(e):S,E=t.displayName&&t.componentId?_e(t.displayName)+"-"+t.componentId:t.componentId||g,b=s&&e.attrs?Array.prototype.concat(e.attrs,d).filter(Boolean):d,_=t.shouldForwardProp;s&&e.shouldForwardProp&&(_=t.shouldForwardProp?function(n,r){return e.shouldForwardProp(n,r)&&t.shouldForwardProp(n,r)}:e.shouldForwardProp);var N,C=new X(o,E,s?e.componentStyle:void 0),A=C.isStatic&&0===d.length,I=function(e,t){return function(e,t,r,o){var s=e.attrs,i=e.componentStyle,u=e.defaultProps,l=e.foldedComponentIds,d=e.shouldForwardProp,h=e.styledComponentId,m=e.target;"production"!==process.env.NODE_ENV&&n.useDebugValue(h);var y=function(e,t,n){void 0===e&&(e=p);var r=c({},t,{theme:e}),o={};return n.forEach((function(e){var t,n,s,i=e;for(t in f(i)&&(i=i(r)),i)r[t]=o[t]="className"===t?(n=o[t],s=i[t],n&&s?n+" "+s:n||s):i[t]})),[r,o]}(we(t,n.useContext(xe),u)||p,t,s),v=y[0],g=y[1],S=function(e,t,r,o){var s=se(),i=ie(),a=t?e.generateAndInjectStyles(p,s,i):e.generateAndInjectStyles(r,s,i);return"production"!==process.env.NODE_ENV&&n.useDebugValue(a),"production"!==process.env.NODE_ENV&&!t&&o&&o(a),a}(i,o,v,"production"!==process.env.NODE_ENV?e.warnTooManyClasses:void 0),w=r,E=g.$as||t.$as||g.as||t.as||m,b=Ce(E),_=g!==t?c({},t,{},g):t,N={};for(var C in _)"$"!==C[0]&&"as"!==C&&("forwardedAs"===C?N.as=_[C]:(d?d(C,a):!b||a(C))&&(N[C]=_[C]));return t.style&&g.style!==t.style&&(N.style=c({},t.style,{},g.style)),N.className=Array.prototype.concat(l,h,S!==h?S:null,t.className,g.className).filter(Boolean).join(" "),N.ref=w,n.createElement(E,N)}(N,e,t,A)};return I.displayName=w,(N=r.forwardRef(I)).attrs=b,N.componentStyle=C,N.displayName=w,N.shouldForwardProp=_,N.foldedComponentIds=s?Array.prototype.concat(e.foldedComponentIds,e.styledComponentId):h,N.styledComponentId=E,N.target=s?e.target:e,N.withComponent=function(e){var n=t.componentId,r=function(e,t){if(null==e)return{};var n,r,o={},s=Object.keys(e);for(r=0;r<s.length;r++)n=s[r],t.indexOf(n)>=0||(o[n]=e[n]);return o}(t,["componentId"]),s=n&&n+"-"+(Ce(e)?e:_e(m(e)));return Te(e,c({},r,{attrs:b,componentId:s}),o)},Object.defineProperty(N,"defaultProps",{get:function(){return this._foldedDefaultProps},set:function(t){this._foldedDefaultProps=s?Oe({},e.defaultProps,t):t}}),"production"!==process.env.NODE_ENV&&(Se(w,E),N.warnTooManyClasses=function(e,t){var n={},r=!1;return function(o){if(!r&&(n[o]=!0,Object.keys(n).length>=200)){var s=t?' with the id of "'+t+'"':"";console.warn("Over 200 classes were generated for component "+e+s+".\nConsider using the attrs method, together with a style object for frequently changed styles.\nExample:\n  const Component = styled.div.attrs(props => ({\n    style: {\n      background: props.background,\n    },\n  }))`width: 100%;`\n\n  <Component />"),r=!0,n={}}}}(w,E)),N.toString=function(){return"."+N.styledComponentId},i&&u(N,e,{attrs:!0,componentStyle:!0,displayName:!0,foldedComponentIds:!0,shouldForwardProp:!0,styledComponentId:!0,target:!0,withComponent:!0}),N}var je=function(e){return function e(n,r,o){if(void 0===o&&(o=p),!t.isValidElementType(r))return _(1,String(r));var s=function(){return n(r,o,ye.apply(void 0,arguments))};return s.withConfig=function(t){return e(n,r,c({},o,{},t))},s.attrs=function(t){return e(n,r,c({},o,{attrs:Array.prototype.concat(o.attrs,t).filter(Boolean)}))},s}(Te,e)};["a","abbr","address","area","article","aside","audio","b","base","bdi","bdo","big","blockquote","body","br","button","canvas","caption","cite","code","col","colgroup","data","datalist","dd","del","details","dfn","dialog","div","dl","dt","em","embed","fieldset","figcaption","figure","footer","form","h1","h2","h3","h4","h5","h6","head","header","hgroup","hr","html","i","iframe","img","input","ins","kbd","keygen","label","legend","li","link","main","map","mark","marquee","menu","menuitem","meta","meter","nav","noscript","object","ol","optgroup","option","output","p","param","picture","pre","progress","q","rp","rt","ruby","s","samp","script","section","select","small","source","span","strong","style","sub","summary","sup","table","tbody","td","textarea","tfoot","th","thead","time","title","tr","track","u","ul","var","video","wbr","circle","clipPath","defs","ellipse","foreignObject","g","image","line","linearGradient","marker","mask","path","pattern","polygon","polyline","radialGradient","rect","stop","svg","text","tspan"].forEach((function(e){je[e]=je(e)}));var ke=function(){function e(e,t){this.rules=e,this.componentId=t,this.isStatic=U(e),G.registerId(this.componentId+1)}var t=e.prototype;return t.createStyles=function(e,t,n,r){var o=r(me(this.rules,t,n,r).join(""),""),s=this.componentId+e;n.insertRules(s,s,o)},t.removeStyles=function(e,t){t.clearRules(this.componentId+e)},t.renderStyles=function(e,t,n,r){e>2&&G.registerId(this.componentId+e),this.removeStyles(e,n),this.createStyles(e,t,n,r)},e}(),Ve=function(){function e(){var e=this;this._emitSheetCSS=function(){var t=e.instance.toString(),n=k();return"<style "+[n&&'nonce="'+n+'"',v+'="true"','data-styled-version="5.2.1"'].filter(Boolean).join(" ")+">"+t+"</style>"},this.getStyleTags=function(){return e.sealed?_(2):e._emitSheetCSS()},this.getStyleElement=function(){var t;if(e.sealed)return _(2);var n=((t={})[v]="",t["data-styled-version"]="5.2.1",t.dangerouslySetInnerHTML={__html:e.instance.toString()},t),o=k();return o&&(n.nonce=o),[r.createElement("style",c({},n,{key:"sc-0-0"}))]},this.seal=function(){e.sealed=!0},this.instance=new G({isServer:!0}),this.sealed=!1}var t=e.prototype;return t.collectStyles=function(e){return this.sealed?_(2):r.createElement(ae,{sheet:this.instance},e)},t.interleaveWithNodeStream=function(e){return _(3)},e}(),Me={StyleSheet:G,masterSheet:re};"production"!==process.env.NODE_ENV&&"undefined"!=typeof navigator&&"ReactNative"===navigator.product&&console.warn("It looks like you've imported 'styled-components' on React Native.\nPerhaps you're looking to import 'styled-components/native'?\nRead more about this at https://www.styled-components.com/docs/basics#react-native"),"production"!==process.env.NODE_ENV&&"test"!==process.env.NODE_ENV&&(window["__styled-components-init__"]=window["__styled-components-init__"]||0,1===window["__styled-components-init__"]&&console.warn("It looks like there are several instances of 'styled-components' initialized in this application. This may cause dynamic styles to not render properly, errors during the rehydration process, a missing theme prop, and makes your application bigger without good reason.\n\nSee https://s-c.sh/2BAXzed for more info."),window["__styled-components-init__"]+=1),exports.ServerStyleSheet=Ve,exports.StyleSheetConsumer=te,exports.StyleSheetContext=ee,exports.StyleSheetManager=ae,exports.ThemeConsumer=Re,exports.ThemeContext=xe,exports.ThemeProvider=function(e){var t=n.useContext(xe),o=n.useMemo((function(){return function(e,t){if(!e)return _(14);if(f(e)){var n=e(t);return"production"===process.env.NODE_ENV||null!==n&&!Array.isArray(n)&&"object"==typeof n?n:_(7)}return Array.isArray(e)||"object"!=typeof e?_(8):t?c({},t,{},e):e}(e.theme,t)}),[e.theme,t]);return e.children?r.createElement(xe.Provider,{value:o},e.children):null},exports.__PRIVATE__=Me,exports.createGlobalStyle=function(e){for(var t=arguments.length,o=new Array(t>1?t-1:0),s=1;s<t;s++)o[s-1]=arguments[s];var i=ye.apply(void 0,[e].concat(o)),a="sc-global-"+Ne(JSON.stringify(i)),u=new ke(i,a);function l(e){var t=se(),o=ie(),s=n.useContext(xe),c=n.useRef(t.allocateGSInstance(a)).current;return"production"!==process.env.NODE_ENV&&r.Children.count(e.children)&&console.warn("The global style component "+a+" was given child JSX. createGlobalStyle does not render children."),"production"!==process.env.NODE_ENV&&i.some((function(e){return"string"==typeof e&&-1!==e.indexOf("@import")}))&&console.warn("Please do not use @import CSS syntax in createGlobalStyle at this time, as the CSSOM APIs we use in production do not handle it well. Instead, we recommend using a library such as react-helmet to inject a typical <link> meta tag to the stylesheet, or simply embedding it manually in your index.html <head> section for a simpler app."),n.useLayoutEffect((function(){return d(c,e,t,s,o),function(){return u.removeStyles(c,t)}}),[c,e,t,s,o]),null}function d(e,t,n,r,o){if(u.isStatic)u.renderStyles(e,w,n,o);else{var s=c({},t,{theme:we(t,r,l.defaultProps)});u.renderStyles(e,s,n,o)}}return"production"!==process.env.NODE_ENV&&Se(a),r.memo(l)},exports.css=ye,exports.default=je,exports.isStyledComponent=y,exports.keyframes=function(e){"production"!==process.env.NODE_ENV&&"undefined"!=typeof navigator&&"ReactNative"===navigator.product&&console.warn("`keyframes` cannot be used on ReactNative, only on the web. To do animation in ReactNative please use Animated.");for(var t=arguments.length,n=new Array(t>1?t-1:0),r=1;r<t;r++)n[r-1]=arguments[r];var o=ye.apply(void 0,[e].concat(n)).join(""),s=Ne(o);return new ue(s,o)},exports.useTheme=function(){return n.useContext(xe)},exports.version="5.2.1",exports.withTheme=function(e){var t=r.forwardRef((function(t,o){var s=n.useContext(xe),i=e.defaultProps,a=we(t,s,i);return"production"!==process.env.NODE_ENV&&void 0===a&&console.warn('[withTheme] You are not using a ThemeProvider nor passing a theme prop or a theme in defaultProps in component class "'+m(e)+'"'),r.createElement(e,c({},t,{theme:a,ref:o}))}));return u(t,e),t.displayName="WithTheme("+m(e)+")",t};
 
 
 }).call(this)}).call(this,require('_process'))
-},{"@emotion/is-prop-valid":1,"@emotion/stylis":3,"@emotion/unitless":4,"_process":26,"hoist-non-react-statics":9,"react":36,"react-is":33,"shallowequal":44}],46:[function(require,module,exports){
+},{"@emotion/is-prop-valid":1,"@emotion/stylis":3,"@emotion/unitless":4,"_process":29,"hoist-non-react-statics":9,"react":39,"react-is":36,"shallowequal":47}],49:[function(require,module,exports){
 "use strict";
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
@@ -33441,7 +35405,7 @@ function App() {
 
 _reactDom["default"].render( /*#__PURE__*/_react["default"].createElement(App, null), document.getElementById('app'));
 
-},{"./isometric":47,"./spiral":48,"./tetris":49,"navigo":24,"react":36,"react-dom":30,"styled-components":45}],47:[function(require,module,exports){
+},{"./isometric":50,"./spiral":51,"./tetris":52,"navigo":27,"react":39,"react-dom":33,"styled-components":48}],50:[function(require,module,exports){
 "use strict";
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
@@ -33638,7 +35602,7 @@ function Isometric() {
 var _default = Isometric;
 exports["default"] = _default;
 
-},{"@react-hook/size":8,"react":36,"styled-components":45}],48:[function(require,module,exports){
+},{"@react-hook/size":8,"react":39,"styled-components":48}],51:[function(require,module,exports){
 "use strict";
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
@@ -33859,7 +35823,7 @@ var Spiral = function Spiral() {
 var _default = Spiral;
 exports["default"] = _default;
 
-},{"lorem-ipsum":14,"react":36,"styled-components":45}],49:[function(require,module,exports){
+},{"lorem-ipsum":17,"react":39,"styled-components":48}],52:[function(require,module,exports){
 "use strict";
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
@@ -33872,6 +35836,8 @@ exports["default"] = void 0;
 var _react = _interopRequireWildcard(require("react"));
 
 var _styledComponents = _interopRequireDefault(require("styled-components"));
+
+var _immer = _interopRequireDefault(require("immer"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
@@ -34000,10 +35966,11 @@ var randomItem = function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
 };
 
-function build(active) {
-  var type = active.type,
-      position = active.position,
-      rotation = active.rotation;
+function build(state) {
+  var type = state.type,
+      position = state.position,
+      rotation = state.rotation;
+  if (!type) return [];
   var _tiles$type = tiles[type],
       colour = _tiles$type.colour,
       layouts = _tiles$type.layouts;
@@ -34015,20 +35982,141 @@ function build(active) {
   });
 }
 
-var blocks = new Map();
-var SCALE = 10;
+var allBlocks = function allBlocks(state) {
+  return [].concat(_toConsumableArray(state.blocks), _toConsumableArray(build(state)));
+};
 
-function transform(_ref5) {
+var SCALE = 10;
+var initialState = {
+  type: null,
+  position: null,
+  rotation: 0,
+  blocks: [[[0, 0], {
+    colour: colours[2]
+  }]],
+  newBlock: true,
+  finished: false,
+  clearing: null
+};
+var stateUpdater = (0, _immer["default"])(function (draft, action) {
+  console.log({
+    draft: draft,
+    action: action
+  });
+
+  switch (action.type) {
+    case 'new_block':
+      draft.newBlock = false;
+      draft.type = randomItem(Object.keys(tiles));
+      draft.position = [5, 0];
+      draft.rotation = 0;
+
+    case 'advance':
+      if (draft.position) draft.position = translate(draft.position, [0, 1]);
+      break;
+
+    case 'move':
+      if (draft.position) draft.position = translate(draft.position, action.offset);
+      break;
+
+    case 'rotate':
+      if (draft.position) draft.rotation = (draft.rotation + action.rotate + 4) % 4;
+      break;
+
+    case 'change_type':
+      var types = Object.keys(tiles);
+      draft.type = types[(types.indexOf(draft.type) + action.offset + types.length) % types.length];
+      break;
+
+    default:
+      throw new Error("Invalid update type");
+  }
+
+  return draft;
+});
+
+var getPositions = function getPositions(blocks) {
+  return blocks.map(function (b) {
+    return b[0];
+  });
+};
+
+var has = function has(list, _ref5) {
   var _ref6 = _slicedToArray(_ref5, 2),
-      x = _ref6[0],
-      y = _ref6[1];
+      x1 = _ref6[0],
+      y1 = _ref6[1];
+
+  return list.find(function (_ref7) {
+    var _ref8 = _slicedToArray(_ref7, 2),
+        x2 = _ref8[0],
+        y2 = _ref8[1];
+
+    return x1 == x2 && y1 == y2;
+  });
+};
+
+function validPositions(blocks) {
+  return getPositions(blocks).every(function (_ref9) {
+    var _ref10 = _slicedToArray(_ref9, 2),
+        x = _ref10[0],
+        y = _ref10[1];
+
+    return x >= 0 && x < 10 && y >= 0 && y < 20;
+  });
+}
+
+function noOverlaps(newBlocks, blocks) {
+  return !getPositions(newBlocks).some(function (newBlock) {
+    return has(blocks, newBlock);
+  });
+}
+
+function ValidState(state) {
+  var newBlocks = build(state);
+  var blocks = getPositions(state.blocks);
+  return validPositions(newBlocks) && noOverlaps(newBlocks, blocks);
+}
+
+function stateReducer(state, action) {
+  var fork = stateUpdater(state, action);
+  var newState;
+
+  if (ValidState(fork)) {
+    newState = fork;
+  } else {
+    newState = state;
+
+    if (action.type == 'new_block') {
+      newState = (0, _immer["default"])(newState, function (draft) {
+        draft.finished = true;
+      });
+    }
+
+    if (action.type == 'advance') {
+      newState = (0, _immer["default"])(newState, function (draft) {
+        var b = allBlocks(newState);
+        draft.blocks = b;
+        draft.newBlock = true;
+      });
+    }
+  }
+
+  return newState;
+}
+
+;
+
+function transform(_ref11) {
+  var _ref12 = _slicedToArray(_ref11, 2),
+      x = _ref12[0],
+      y = _ref12[1];
 
   return "translate(".concat(x * SCALE, ", ").concat(y * SCALE, ")");
 }
 
-function Block(_ref7) {
-  var coords = _ref7.coords,
-      block = _ref7.block;
+function Block(_ref13) {
+  var coords = _ref13.coords,
+      block = _ref13.block;
   var colour = block.colour;
   return /*#__PURE__*/_react["default"].createElement("g", {
     transform: transform(coords)
@@ -34047,50 +36135,69 @@ function Block(_ref7) {
 }
 
 function Tetris() {
-  var _useState = (0, _react.useState)(function () {
-    return new Map([[[0, 0], {
-      colour: colours[2]
-    }]]);
-  }),
+  var _useReducer = (0, _react.useReducer)(stateReducer, initialState),
+      _useReducer2 = _slicedToArray(_useReducer, 2),
+      gameState = _useReducer2[0],
+      dispatch = _useReducer2[1];
+
+  var type = gameState.type,
+      newBlock = gameState.newBlock,
+      finished = gameState.finished,
+      clearing = gameState.clearing;
+  console.log({
+    gameState: gameState
+  }); // useEffect(() => {
+  //   if (clearing) dispatch({type: 'new_block'})
+  // }, [clearing]);
+  // useEffect(() => {
+  //   if (clearing) dispatch({type: 'new_block'})
+  // }, [newBlock]);
+
+  (0, _react.useEffect)(function () {
+    if (newBlock) dispatch({
+      type: 'new_block'
+    });
+  }, [newBlock]);
+
+  var _useState = (0, _react.useState)(false),
       _useState2 = _slicedToArray(_useState, 2),
-      blocks = _useState2[0],
-      setBlocks = _useState2[1];
+      showControls = _useState2[0],
+      setShowControls = _useState2[1];
 
-  var _useState3 = (0, _react.useState)(randomItem(Object.keys(tiles))),
+  var _useState3 = (0, _react.useState)(false),
       _useState4 = _slicedToArray(_useState3, 2),
-      type = _useState4[0],
-      setType = _useState4[1];
+      advance = _useState4[0],
+      setAdvance = _useState4[1];
 
-  var _useState5 = (0, _react.useState)([2, 2]),
-      _useState6 = _slicedToArray(_useState5, 2),
-      position = _useState6[0],
-      setPosition = _useState6[1];
+  (0, _react.useEffect)(function () {
+    var cancelId;
 
-  var _useState7 = (0, _react.useState)(0),
-      _useState8 = _slicedToArray(_useState7, 2),
-      rotation = _useState8[0],
-      setRotation = _useState8[1];
+    if (advance) {
+      cancelId = setInterval(function () {
+        dispatch({
+          type: 'advance'
+        });
+      }, 500);
+    }
 
-  var _useState9 = (0, _react.useState)(false),
-      _useState10 = _slicedToArray(_useState9, 2),
-      showControls = _useState10[0],
-      setShowControls = _useState10[1];
-
-  var active = {
-    type: type,
-    position: position,
-    rotation: rotation
-  };
-  var display = new Map([].concat(_toConsumableArray(blocks), _toConsumableArray(build(active))));
+    return function () {
+      if (cancelId) window.clearInterval(cancelId);
+    };
+  }, [advance]);
+  var display = allBlocks(gameState);
   var handleKeyDown = (0, _react.useCallback)(function (event) {
-    var move = codeMapping(event.code, new Map([[["KeyW", "ArrowUp"], [0, -1]], [["KeyS", "ArrowDown"], [0, 1]], [["KeyA", "ArrowLeft"], [-1, 0]], [["KeyD", "ArrowRight"], [1, 0]]]), [0, 0]);
+    if (finished) return;
+    var offset = codeMapping(event.code, new Map([[["KeyW", "ArrowUp"], [0, -1]], [["KeyS", "ArrowDown"], [0, 1]], [["KeyA", "ArrowLeft"], [-1, 0]], [["KeyD", "ArrowRight"], [1, 0]]]), [0, 0]);
     var rotate = codeMapping(event.code, new Map([[["KeyQ"], -1], [["KeyE"], 1]]), 0);
-    setPosition(function (p) {
-      return translate(p, move);
+    dispatch({
+      type: 'move',
+      offset: offset
     });
-    setRotation(function (r) {
-      return (r + rotate + 4) % 4;
-    });
+    dispatch({
+      type: 'rotate',
+      rotate: rotate
+    }); //setPosition(p => translate(p, offset));
+    //setRotation(r => (r + rotate + 4) % 4);
   });
   (0, _react.useEffect)(function () {
     window.addEventListener('keydown', handleKeyDown); // cleanup this component
@@ -34101,9 +36208,9 @@ function Tetris() {
   }, []);
 
   function changeType(offset) {
-    var types = Object.keys(tiles);
-    setType(function (t) {
-      return types[(types.indexOf(t) + offset + types.length) % types.length];
+    dispatch({
+      type: 'change_type',
+      offset: offset
     });
   }
 
@@ -34113,7 +36220,15 @@ function Tetris() {
     });
   }
 
-  return /*#__PURE__*/_react["default"].createElement(Container, null, /*#__PURE__*/_react["default"].createElement(Controls, null, /*#__PURE__*/_react["default"].createElement("span", null, /*#__PURE__*/_react["default"].createElement("input", {
+  return /*#__PURE__*/_react["default"].createElement(Container, null, /*#__PURE__*/_react["default"].createElement(Controls, null, /*#__PURE__*/_react["default"].createElement("span", null, finished && "Finished!"), " \xA0\xA0", /*#__PURE__*/_react["default"].createElement("span", null, /*#__PURE__*/_react["default"].createElement("input", {
+    type: "checkbox",
+    checked: advance,
+    onChange: function onChange(e) {
+      return setAdvance(function (a) {
+        return !a;
+      });
+    }
+  }), " run"), " \xA0\xA0", /*#__PURE__*/_react["default"].createElement("span", null, /*#__PURE__*/_react["default"].createElement("input", {
     type: "checkbox",
     checked: showControls,
     onChange: function onChange(e) {
@@ -34151,10 +36266,10 @@ function Tetris() {
     fill: "url(#Pattern)",
     width: "100%",
     height: "100%"
-  }), Array.from(display).map(function (_ref8, i) {
-    var _ref9 = _slicedToArray(_ref8, 2),
-        coords = _ref9[0],
-        block = _ref9[1];
+  }), display.map(function (_ref14, i) {
+    var _ref15 = _slicedToArray(_ref14, 2),
+        coords = _ref15[0],
+        block = _ref15[1];
 
     return /*#__PURE__*/_react["default"].createElement(Block, {
       key: i,
@@ -34183,4 +36298,4 @@ function Tetris() {
 var _default = Tetris;
 exports["default"] = _default;
 
-},{"react":36,"styled-components":45}]},{},[46]);
+},{"immer":12,"react":39,"styled-components":48}]},{},[49]);
